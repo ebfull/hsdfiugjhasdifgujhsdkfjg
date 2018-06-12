@@ -107,7 +107,7 @@ const MODULUS_C5: u64 = 0x434bacd76477;
 const MODULUS_C6: u64 = 0xe69a4b1ba7b6;
 const MODULUS_C7: u64 = 0x1a0111ea397f;
 
-impl<N: Magnitude, F: Form> Neg for Fq<N, F>
+impl<'a, N: Magnitude, F: Form> Neg for &'a Fq<N, F>
 where
     N: Mul<typenum::U4>,
     Prod<N, typenum::U4>: Magnitude,
@@ -134,14 +134,14 @@ where
     }
 }
 
-impl<N: Magnitude, M: Magnitude, F1: Form, F2: Form> Add<Fq<M, F2>> for Fq<N, F1>
+impl<'a, 'b, N: Magnitude, M: Magnitude, F1: Form, F2: Form> Add<&'b Fq<M, F2>> for &'a Fq<N, F1>
 where
     N: Add<M>,
     Sum<N, M>: Magnitude,
 {
     type Output = Fq<Sum<N, M>, Abnormal>;
 
-    fn add(self, rhs: Fq<M, F2>) -> Self::Output {
+    fn add(self, rhs: &'b Fq<M, F2>) -> Self::Output {
         Fq(
             self.0.wrapping_add(rhs.0),
             self.1.wrapping_add(rhs.1),
@@ -156,15 +156,17 @@ where
     }
 }
 
-impl<N: Magnitude, M: Magnitude, F1: Form, F2: Form> Sub<Fq<M, F2>> for Fq<N, F1>
+impl<'a, 'b, N: Magnitude, M: Magnitude, F1: Form, F2: Form> Sub<&'b Fq<M, F2>> for &'a Fq<N, F1>
 where
-    Fq<M, F2>: Neg,
-    Fq<N, F1>: Add<<Fq<M, F2> as Neg>::Output>
+    M: Mul<typenum::U4>,
+    Prod<M, typenum::U4>: Magnitude,
+    N: Add<Prod<M, typenum::U4>>,
+    Sum<N, Prod<M, typenum::U4>>: Magnitude,
 {
-    type Output = Sum<Fq<N, F1>, <Fq<M, F2> as Neg>::Output>;
+    type Output = Fq<Sum<N, Prod<M, typenum::U4>>, Abnormal>;
 
-    fn sub(self, rhs: Fq<M, F2>) -> Self::Output {
-        self + (-rhs)
+    fn sub(self, rhs: &'b Fq<M, F2>) -> Self::Output {
+        self + &(-rhs)
     }
 }
 
@@ -178,7 +180,7 @@ impl<T> Num<T> {
     }
 }
 
-impl<N: Magnitude, M: Magnitude, F: Form> Mul<Num<M>> for Fq<N, F>
+impl<'a, N: Magnitude, M: Magnitude, F: Form> Mul<Num<M>> for &'a Fq<N, F>
 where
     N: Mul<M>,
     Prod<N, M>: Magnitude,
@@ -200,14 +202,105 @@ where
     }
 }
 
-impl<N: Magnitude, M: Magnitude, F1: Form, F2: Form> Mul<Fq<M, F2>> for Fq<N, F1>
+impl<N: Magnitude, F: Form> Fq<N, F>
+where
+    N: Add<N>,
+    typenum::U5: Sub<Sum<N, N>>
+{
+    fn square(&self) -> Fq<typenum::U2, Propagated> {
+        let x0;
+        let x1;
+        let x2;
+        let x3;
+        let x4;
+        let x5;
+        let x6;
+        let x7;
+
+        if F::is_propagated() {
+            x0 = self.0;
+            x1 = self.1;
+            x2 = self.2;
+            x3 = self.3;
+            x4 = self.4;
+            x5 = self.5;
+            x6 = self.6;
+            x7 = self.7;
+        } else {
+            // Propagate carries
+            x0 = self.0;
+            x1 = self.1.wrapping_add(x0 >> 48);
+            x2 = self.2.wrapping_add(x1 >> 48);
+            x3 = self.3.wrapping_add(x2 >> 48);
+            x4 = self.4.wrapping_add(x3 >> 48);
+            x5 = self.5.wrapping_add(x4 >> 48);
+            x6 = self.6.wrapping_add(x5 >> 48);
+            x7 = self.7.wrapping_add(x6 >> 48);
+        }
+
+        let (x0, x1, x2, x3, x4, x5) = merge(x0, x1, x2, x3, x4, x5, x6, x7);
+
+        let mut carry = 0;
+        let r0 = mac_with_carry(0, x0, x0, &mut carry);
+        let r1 = mac_with_carry(0, x0, x1, &mut carry);
+        let r2 = mac_with_carry(0, x0, x2, &mut carry);
+        let r3 = mac_with_carry(0, x0, x3, &mut carry);
+        let r4 = mac_with_carry(0, x0, x4, &mut carry);
+        let r5 = mac_with_carry(0, x0, x5, &mut carry);
+        let r6 = carry;
+        let mut carry = 0;
+        let r1 = mac_with_carry(r1, x1, x0, &mut carry);
+        let r2 = mac_with_carry(r2, x1, x1, &mut carry);
+        let r3 = mac_with_carry(r3, x1, x2, &mut carry);
+        let r4 = mac_with_carry(r4, x1, x3, &mut carry);
+        let r5 = mac_with_carry(r5, x1, x4, &mut carry);
+        let r6 = mac_with_carry(r6, x1, x5, &mut carry);
+        let r7 = carry;
+        let mut carry = 0;
+        let r2 = mac_with_carry(r2, x2, x0, &mut carry);
+        let r3 = mac_with_carry(r3, x2, x1, &mut carry);
+        let r4 = mac_with_carry(r4, x2, x2, &mut carry);
+        let r5 = mac_with_carry(r5, x2, x3, &mut carry);
+        let r6 = mac_with_carry(r6, x2, x4, &mut carry);
+        let r7 = mac_with_carry(r7, x2, x5, &mut carry);
+        let r8 = carry;
+        let mut carry = 0;
+        let r3 = mac_with_carry(r3, x3, x0, &mut carry);
+        let r4 = mac_with_carry(r4, x3, x1, &mut carry);
+        let r5 = mac_with_carry(r5, x3, x2, &mut carry);
+        let r6 = mac_with_carry(r6, x3, x3, &mut carry);
+        let r7 = mac_with_carry(r7, x3, x4, &mut carry);
+        let r8 = mac_with_carry(r8, x3, x5, &mut carry);
+        let r9 = carry;
+        let mut carry = 0;
+        let r4 = mac_with_carry(r4, x4, x0, &mut carry);
+        let r5 = mac_with_carry(r5, x4, x1, &mut carry);
+        let r6 = mac_with_carry(r6, x4, x2, &mut carry);
+        let r7 = mac_with_carry(r7, x4, x3, &mut carry);
+        let r8 = mac_with_carry(r8, x4, x4, &mut carry);
+        let r9 = mac_with_carry(r9, x4, x5, &mut carry);
+        let r10 = carry;
+        let mut carry = 0;
+        let r5 = mac_with_carry(r5, x5, x0, &mut carry);
+        let r6 = mac_with_carry(r6, x5, x1, &mut carry);
+        let r7 = mac_with_carry(r7, x5, x2, &mut carry);
+        let r8 = mac_with_carry(r8, x5, x3, &mut carry);
+        let r9 = mac_with_carry(r9, x5, x4, &mut carry);
+        let r10 = mac_with_carry(r10, x5, x5, &mut carry);
+        let r11 = carry;
+
+        mont_reduce(r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11)
+    }
+}
+
+impl<'a, 'b, N: Magnitude, M: Magnitude, F1: Form, F2: Form> Mul<&'b Fq<M, F2>> for &'a Fq<N, F1>
 where
     N: Add<M>,
     typenum::U5: Sub<Sum<N, M>>
 {
     type Output = Fq<typenum::U2, Propagated>;
 
-    fn mul(self, other: Fq<M, F2>) -> Self::Output {
+    fn mul(self, other: &'b Fq<M, F2>) -> Self::Output {
         let x0;
         let x1;
         let x2;
@@ -434,7 +527,7 @@ fn mac_with_carry(a: u64, b: u64, c: u64, carry: &mut u64) -> u64 {
 impl<N: Magnitude, F: Form> Fq<N, F> {
     /// This performs a reduction of an element of any magnitude into an element
     /// of magnitude 2.
-    pub fn reduce(self) -> Fq<typenum::U2, Propagated> {
+    pub fn reduce(&self) -> Fq<typenum::U2, Propagated> {
         let c0;
         let c1;
         let c2;
@@ -581,7 +674,7 @@ fn test_mul() {
 
         let b = Fq::<typenum::U2, Abnormal>(c0, c1, c2, c3, c4, c5, c6, c7, PhantomData);
 
-        let c = a * b;
+        let c = &a * &b;
         assert!(c.7 <= 0x3ffffffffffe);
     }
 }
@@ -618,6 +711,82 @@ fn test_mergesplit() {
         assert_eq!(c4, x4);
         assert_eq!(c5, x5);
     }
+}
+
+#[bench]
+fn bench_g1_double(b: &mut test::Bencher) {
+    const SAMPLES: usize = 1000;
+
+    let mut rng = thread_rng();
+
+    let x: Vec<_> = (0..SAMPLES)
+        .map(|_| {
+            Fq::<typenum::U2, Abnormal>(
+                rng.gen::<u64>() >> 16,
+                rng.gen::<u64>() >> 16,
+                rng.gen::<u64>() >> 16,
+                rng.gen::<u64>() >> 16,
+                rng.gen::<u64>() >> 16,
+                rng.gen::<u64>() >> 16,
+                rng.gen::<u64>() >> 16,
+                rng.gen::<u64>() >> 19,
+                PhantomData,
+            )
+        })
+        .collect();
+
+    let y: Vec<_> = (0..SAMPLES)
+        .map(|_| {
+            Fq::<typenum::U2, Abnormal>(
+                rng.gen::<u64>() >> 16,
+                rng.gen::<u64>() >> 16,
+                rng.gen::<u64>() >> 16,
+                rng.gen::<u64>() >> 16,
+                rng.gen::<u64>() >> 16,
+                rng.gen::<u64>() >> 16,
+                rng.gen::<u64>() >> 16,
+                rng.gen::<u64>() >> 19,
+                PhantomData,
+            )
+        })
+        .collect();
+
+    let z: Vec<_> = (0..SAMPLES)
+        .map(|_| {
+            Fq::<typenum::U2, Abnormal>(
+                rng.gen::<u64>() >> 16,
+                rng.gen::<u64>() >> 16,
+                rng.gen::<u64>() >> 16,
+                rng.gen::<u64>() >> 16,
+                rng.gen::<u64>() >> 16,
+                rng.gen::<u64>() >> 16,
+                rng.gen::<u64>() >> 16,
+                rng.gen::<u64>() >> 19,
+                PhantomData,
+            )
+        })
+        .collect();
+
+    let mut count = 0;
+    b.iter(|| {
+        count = (count + 1) % SAMPLES;
+        let x_old = x[count].clone();
+        let y_old = y[count].clone();
+        let z_old = z[count].clone();
+
+        let z_new = &(&z_old * &y_old) * (Num::<typenum::U2>::new());
+        let t1 = (&x_old.square() * (Num::<typenum::U3>::new())).reduce();
+        let t2 = t1.square();
+        let t3 = (&y_old.square() * (Num::<typenum::U2>::new())).reduce();
+        let t4 = &t3.square() * (Num::<typenum::U2>::new());
+        let t3 = &t3 * &x_old;
+        let x_new = &t2 - &(&t3 * (Num::<typenum::U4>::new()));
+        let t2 = -&t2;
+        let t3 = (&(&t3 * Num::<typenum::U6>::new()) + &t2).reduce();
+        let y_new = &(&t1 * &t3) - &t4;
+
+        (z_new.reduce(), x_new.reduce(), y_new.reduce())
+    });
 }
 
 #[bench]
@@ -661,7 +830,36 @@ fn bench_multiplication(b: &mut test::Bencher) {
     let mut count = 0;
     b.iter(|| {
         count = (count + 1) % SAMPLES;
-        v1[count].clone() * v2[count].clone()
+        &v1[count] * &v2[count]
+    });
+}
+
+#[bench]
+fn bench_squaring(b: &mut test::Bencher) {
+    const SAMPLES: usize = 1000;
+
+    let mut rng = thread_rng();
+
+    let v1: Vec<_> = (0..SAMPLES)
+        .map(|_| {
+            Fq::<typenum::U2, Abnormal>(
+                rng.gen::<u64>() >> 16,
+                rng.gen::<u64>() >> 16,
+                rng.gen::<u64>() >> 16,
+                rng.gen::<u64>() >> 16,
+                rng.gen::<u64>() >> 16,
+                rng.gen::<u64>() >> 16,
+                rng.gen::<u64>() >> 16,
+                rng.gen::<u64>() >> 19,
+                PhantomData,
+            )
+        })
+        .collect();
+
+    let mut count = 0;
+    b.iter(|| {
+        count = (count + 1) % SAMPLES;
+        v1[count].square()
     });
 }
 
@@ -706,7 +904,7 @@ fn bench_addition(b: &mut test::Bencher) {
     let mut count = 0;
     b.iter(|| {
         count = (count + 1) % SAMPLES;
-        v1[count].clone() + v2[count].clone()
+        &v1[count] + &v2[count]
     });
 }
 
@@ -751,7 +949,7 @@ fn bench_subtraction(b: &mut test::Bencher) {
     let mut count = 0;
     b.iter(|| {
         count = (count + 1) % SAMPLES;
-        v1[count].clone() - v2[count].clone()
+        &v1[count] - &v2[count]
     });
 }
 
@@ -780,7 +978,7 @@ fn bench_reduction(b: &mut test::Bencher) {
     let mut count = 0;
     b.iter(|| {
         count = (count + 1) % SAMPLES;
-        v1[count].clone().reduce()
+        v1[count].reduce()
     });
 }
 
@@ -809,7 +1007,7 @@ fn bench_negation(b: &mut test::Bencher) {
     let mut count = 0;
     b.iter(|| {
         count = (count + 1) % SAMPLES;
-        -v1[count].clone()
+        -&v1[count]
     });
 }
 
@@ -838,6 +1036,6 @@ fn bench_scaling(b: &mut test::Bencher) {
     let mut count = 0;
     b.iter(|| {
         count = (count + 1) % SAMPLES;
-        v1[count].clone() * Num::<typenum::U512>::new()
+        &v1[count] * Num::<typenum::U512>::new()
     });
 }

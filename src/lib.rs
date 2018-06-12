@@ -1012,6 +1012,27 @@ fn bench_negation(b: &mut test::Bencher) {
 }
 
 #[bench]
+fn bench_mont_reduce(b: &mut test::Bencher) {
+    const SAMPLES: usize = 1000;
+
+    let mut rng = thread_rng();
+
+    let v: Vec<_> = (0..SAMPLES)
+        .map(|_| {
+            (rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen())
+        })
+        .collect();
+
+    let mut count = 0;
+    b.iter(|| {
+        count = (count + 1) % SAMPLES;
+        let (r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11) = v[count];
+
+        mont_reduce::<typenum::U1, Propagated>(r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11);
+    });
+}
+
+#[bench]
 fn bench_scaling(b: &mut test::Bencher) {
     const SAMPLES: usize = 1000;
 

@@ -98,14 +98,16 @@ impl<M: Magnitude, F: Form> Clone for Fq<M, F> {
 }
 
 // q = 4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787
-const MODULUS_C0: u64 = 0xffffffffaaab;
-const MODULUS_C1: u64 = 0xb153ffffb9fe;
-const MODULUS_C2: u64 = 0xf6241eabfffe;
-const MODULUS_C3: u64 = 0x6730d2a0f6b0;
-const MODULUS_C4: u64 = 0x4b84f38512bf;
-const MODULUS_C5: u64 = 0x434bacd76477;
-const MODULUS_C6: u64 = 0xe69a4b1ba7b6;
-const MODULUS_C7: u64 = 0x1a0111ea397f;
+const MODULUS: [u64; 8] = [
+    0xffffffffaaab,
+    0xb153ffffb9fe,
+    0xf6241eabfffe,
+    0x6730d2a0f6b0,
+    0x4b84f38512bf,
+    0x434bacd76477,
+    0xe69a4b1ba7b6,
+    0x1a0111ea397f,
+];
 
 impl<'a, N: Magnitude, F: Form> Neg for &'a Fq<N, F>
 where
@@ -121,14 +123,14 @@ where
         // a larger multiple of the modulus than the element
         // could possibly be.
         Fq(
-            (MODULUS_C0 * 4 * N::U64).wrapping_sub(self.0),
-            (MODULUS_C1 * 4 * N::U64).wrapping_sub(self.1),
-            (MODULUS_C2 * 4 * N::U64).wrapping_sub(self.2),
-            (MODULUS_C3 * 4 * N::U64).wrapping_sub(self.3),
-            (MODULUS_C4 * 4 * N::U64).wrapping_sub(self.4),
-            (MODULUS_C5 * 4 * N::U64).wrapping_sub(self.5),
-            (MODULUS_C6 * 4 * N::U64).wrapping_sub(self.6),
-            (MODULUS_C7 * 4 * N::U64).wrapping_sub(self.7),
+            (MODULUS[0] * 4 * N::U64).wrapping_sub(self.0),
+            (MODULUS[1] * 4 * N::U64).wrapping_sub(self.1),
+            (MODULUS[2] * 4 * N::U64).wrapping_sub(self.2),
+            (MODULUS[3] * 4 * N::U64).wrapping_sub(self.3),
+            (MODULUS[4] * 4 * N::U64).wrapping_sub(self.4),
+            (MODULUS[5] * 4 * N::U64).wrapping_sub(self.5),
+            (MODULUS[6] * 4 * N::U64).wrapping_sub(self.6),
+            (MODULUS[7] * 4 * N::U64).wrapping_sub(self.7),
             PhantomData,
         )
     }
@@ -417,15 +419,18 @@ where
     }
 }
 
-const SIX_MODULUS_C0: u64 = 0xb9feffffffffaaab;
-const SIX_MODULUS_C1: u64 = 0x1eabfffeb153ffff;
-const SIX_MODULUS_C2: u64 = 0x6730d2a0f6b0f624;
-const SIX_MODULUS_C3: u64 = 0x64774b84f38512bf;
-const SIX_MODULUS_C4: u64 = 0x4b1ba7b6434bacd7;
-const SIX_MODULUS_C5: u64 = 0x1a0111ea397fe69a;
+const SIX_MODULUS: [u64; 6] = [
+    0xb9feffffffffaaab,
+    0x1eabfffeb153ffff,
+    0x6730d2a0f6b0f624,
+    0x64774b84f38512bf,
+    0x4b1ba7b6434bacd7,
+    0x1a0111ea397fe69a
+];
 
 const INV: u64 = 0x89f3fffcfffcfffd;
 
+#[inline(always)]
 fn mont_reduce<N: Magnitude, F: Form>(
     r0: u64,
     mut r1: u64,
@@ -443,62 +448,62 @@ fn mont_reduce<N: Magnitude, F: Form>(
 {
     let k = r0.wrapping_mul(INV);
     let mut carry = 0;
-    ::mac_with_carry(r0, k, SIX_MODULUS_C0, &mut carry);
-    r1 = ::mac_with_carry(r1, k, SIX_MODULUS_C1, &mut carry);
-    r2 = ::mac_with_carry(r2, k, SIX_MODULUS_C2, &mut carry);
-    r3 = ::mac_with_carry(r3, k, SIX_MODULUS_C3, &mut carry);
-    r4 = ::mac_with_carry(r4, k, SIX_MODULUS_C4, &mut carry);
-    r5 = ::mac_with_carry(r5, k, SIX_MODULUS_C5, &mut carry);
+    ::mac_with_carry(r0, k, SIX_MODULUS[0], &mut carry);
+    r1 = ::mac_with_carry(r1, k, SIX_MODULUS[1], &mut carry);
+    r2 = ::mac_with_carry(r2, k, SIX_MODULUS[2], &mut carry);
+    r3 = ::mac_with_carry(r3, k, SIX_MODULUS[3], &mut carry);
+    r4 = ::mac_with_carry(r4, k, SIX_MODULUS[4], &mut carry);
+    r5 = ::mac_with_carry(r5, k, SIX_MODULUS[5], &mut carry);
     r6 = ::adc(r6, 0, &mut carry);
     let carry2 = carry;
     let k = r1.wrapping_mul(INV);
     let mut carry = 0;
-    ::mac_with_carry(r1, k, SIX_MODULUS_C0, &mut carry);
-    r2 = ::mac_with_carry(r2, k, SIX_MODULUS_C1, &mut carry);
-    r3 = ::mac_with_carry(r3, k, SIX_MODULUS_C2, &mut carry);
-    r4 = ::mac_with_carry(r4, k, SIX_MODULUS_C3, &mut carry);
-    r5 = ::mac_with_carry(r5, k, SIX_MODULUS_C4, &mut carry);
-    r6 = ::mac_with_carry(r6, k, SIX_MODULUS_C5, &mut carry);
+    ::mac_with_carry(r1, k, SIX_MODULUS[0], &mut carry);
+    r2 = ::mac_with_carry(r2, k, SIX_MODULUS[1], &mut carry);
+    r3 = ::mac_with_carry(r3, k, SIX_MODULUS[2], &mut carry);
+    r4 = ::mac_with_carry(r4, k, SIX_MODULUS[3], &mut carry);
+    r5 = ::mac_with_carry(r5, k, SIX_MODULUS[4], &mut carry);
+    r6 = ::mac_with_carry(r6, k, SIX_MODULUS[5], &mut carry);
     r7 = ::adc(r7, carry2, &mut carry);
     let carry2 = carry;
     let k = r2.wrapping_mul(INV);
     let mut carry = 0;
-    ::mac_with_carry(r2, k, SIX_MODULUS_C0, &mut carry);
-    r3 = ::mac_with_carry(r3, k, SIX_MODULUS_C1, &mut carry);
-    r4 = ::mac_with_carry(r4, k, SIX_MODULUS_C2, &mut carry);
-    r5 = ::mac_with_carry(r5, k, SIX_MODULUS_C3, &mut carry);
-    r6 = ::mac_with_carry(r6, k, SIX_MODULUS_C4, &mut carry);
-    r7 = ::mac_with_carry(r7, k, SIX_MODULUS_C5, &mut carry);
+    ::mac_with_carry(r2, k, SIX_MODULUS[0], &mut carry);
+    r3 = ::mac_with_carry(r3, k, SIX_MODULUS[1], &mut carry);
+    r4 = ::mac_with_carry(r4, k, SIX_MODULUS[2], &mut carry);
+    r5 = ::mac_with_carry(r5, k, SIX_MODULUS[3], &mut carry);
+    r6 = ::mac_with_carry(r6, k, SIX_MODULUS[4], &mut carry);
+    r7 = ::mac_with_carry(r7, k, SIX_MODULUS[5], &mut carry);
     r8 = ::adc(r8, carry2, &mut carry);
     let carry2 = carry;
     let k = r3.wrapping_mul(INV);
     let mut carry = 0;
-    ::mac_with_carry(r3, k, SIX_MODULUS_C0, &mut carry);
-    r4 = ::mac_with_carry(r4, k, SIX_MODULUS_C1, &mut carry);
-    r5 = ::mac_with_carry(r5, k, SIX_MODULUS_C2, &mut carry);
-    r6 = ::mac_with_carry(r6, k, SIX_MODULUS_C3, &mut carry);
-    r7 = ::mac_with_carry(r7, k, SIX_MODULUS_C4, &mut carry);
-    r8 = ::mac_with_carry(r8, k, SIX_MODULUS_C5, &mut carry);
+    ::mac_with_carry(r3, k, SIX_MODULUS[0], &mut carry);
+    r4 = ::mac_with_carry(r4, k, SIX_MODULUS[1], &mut carry);
+    r5 = ::mac_with_carry(r5, k, SIX_MODULUS[2], &mut carry);
+    r6 = ::mac_with_carry(r6, k, SIX_MODULUS[3], &mut carry);
+    r7 = ::mac_with_carry(r7, k, SIX_MODULUS[4], &mut carry);
+    r8 = ::mac_with_carry(r8, k, SIX_MODULUS[5], &mut carry);
     r9 = ::adc(r9, carry2, &mut carry);
     let carry2 = carry;
     let k = r4.wrapping_mul(INV);
     let mut carry = 0;
-    ::mac_with_carry(r4, k, SIX_MODULUS_C0, &mut carry);
-    r5 = ::mac_with_carry(r5, k, SIX_MODULUS_C1, &mut carry);
-    r6 = ::mac_with_carry(r6, k, SIX_MODULUS_C2, &mut carry);
-    r7 = ::mac_with_carry(r7, k, SIX_MODULUS_C3, &mut carry);
-    r8 = ::mac_with_carry(r8, k, SIX_MODULUS_C4, &mut carry);
-    r9 = ::mac_with_carry(r9, k, SIX_MODULUS_C5, &mut carry);
+    ::mac_with_carry(r4, k, SIX_MODULUS[0], &mut carry);
+    r5 = ::mac_with_carry(r5, k, SIX_MODULUS[1], &mut carry);
+    r6 = ::mac_with_carry(r6, k, SIX_MODULUS[2], &mut carry);
+    r7 = ::mac_with_carry(r7, k, SIX_MODULUS[3], &mut carry);
+    r8 = ::mac_with_carry(r8, k, SIX_MODULUS[4], &mut carry);
+    r9 = ::mac_with_carry(r9, k, SIX_MODULUS[5], &mut carry);
     r10 = ::adc(r10, carry2, &mut carry);
     let carry2 = carry;
     let k = r5.wrapping_mul(INV);
     let mut carry = 0;
-    ::mac_with_carry(r5, k, SIX_MODULUS_C0, &mut carry);
-    r6 = ::mac_with_carry(r6, k, SIX_MODULUS_C1, &mut carry);
-    r7 = ::mac_with_carry(r7, k, SIX_MODULUS_C2, &mut carry);
-    r8 = ::mac_with_carry(r8, k, SIX_MODULUS_C3, &mut carry);
-    r9 = ::mac_with_carry(r9, k, SIX_MODULUS_C4, &mut carry);
-    r10 = ::mac_with_carry(r10, k, SIX_MODULUS_C5, &mut carry);
+    ::mac_with_carry(r5, k, SIX_MODULUS[0], &mut carry);
+    r6 = ::mac_with_carry(r6, k, SIX_MODULUS[1], &mut carry);
+    r7 = ::mac_with_carry(r7, k, SIX_MODULUS[2], &mut carry);
+    r8 = ::mac_with_carry(r8, k, SIX_MODULUS[3], &mut carry);
+    r9 = ::mac_with_carry(r9, k, SIX_MODULUS[4], &mut carry);
+    r10 = ::mac_with_carry(r10, k, SIX_MODULUS[5], &mut carry);
     r11 = ::adc(r11, carry2, &mut carry);
 
     let (r0, r1, r2, r3, r4, r5, r6, r7) = split(r6, r7, r8, r9, r10, r11);
@@ -559,36 +564,36 @@ impl<N: Magnitude, F: Form> Fq<N, F> {
         }
 
         // Compute how many times we need to subtract the modulus
-        let x = (c7 & 0xffffe00000000000) / MODULUS_C7;
+        let x = (c7 & 0xffffe00000000000) / MODULUS[7];
 
         // Subtract q * x
-        let c0 = (c0 | 0xffff000000000000).wrapping_sub(MODULUS_C0 * x);
+        let c0 = (c0 | 0xffff000000000000).wrapping_sub(MODULUS[0] * x);
         let c1 = (c1 | 0xffff000000000000)
-            .wrapping_sub(MODULUS_C1 * x)
+            .wrapping_sub(MODULUS[1] * x)
             .wrapping_sub(((1 << 16) - 1) - (c0 >> 48));
         let c0 = c0 & 0x0000ffffffffffff;
         let c2 = (c2 | 0xffff000000000000)
-            .wrapping_sub(MODULUS_C2 * x)
+            .wrapping_sub(MODULUS[2] * x)
             .wrapping_sub(((1 << 16) - 1) - (c1 >> 48));
         let c1 = c1 & 0x0000ffffffffffff;
         let c3 = (c3 | 0xffff000000000000)
-            .wrapping_sub(MODULUS_C3 * x)
+            .wrapping_sub(MODULUS[3] * x)
             .wrapping_sub(((1 << 16) - 1) - (c2 >> 48));
         let c2 = c2 & 0x0000ffffffffffff;
         let c4 = (c4 | 0xffff000000000000)
-            .wrapping_sub(MODULUS_C4 * x)
+            .wrapping_sub(MODULUS[4] * x)
             .wrapping_sub(((1 << 16) - 1) - (c3 >> 48));
         let c3 = c3 & 0x0000ffffffffffff;
         let c5 = (c5 | 0xffff000000000000)
-            .wrapping_sub(MODULUS_C5 * x)
+            .wrapping_sub(MODULUS[5] * x)
             .wrapping_sub(((1 << 16) - 1) - (c4 >> 48));
         let c4 = c4 & 0x0000ffffffffffff;
         let c6 = (c6 | 0xffff000000000000)
-            .wrapping_sub(MODULUS_C6 * x)
+            .wrapping_sub(MODULUS[6] * x)
             .wrapping_sub(((1 << 16) - 1) - (c5 >> 48));
         let c5 = c5 & 0x0000ffffffffffff;
         let c7 = (c7 | 0x0000000000000000)
-            .wrapping_sub(MODULUS_C7 * x)
+            .wrapping_sub(MODULUS[7] * x)
             .wrapping_sub(((1 << 16) - 1) - (c6 >> 48));
         let c6 = c6 & 0x0000ffffffffffff;
 
@@ -1028,7 +1033,7 @@ fn bench_mont_reduce(b: &mut test::Bencher) {
         count = (count + 1) % SAMPLES;
         let (r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11) = v[count];
 
-        mont_reduce::<typenum::U1, Propagated>(r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11);
+        mont_reduce::<typenum::U1, Propagated>(r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11)
     });
 }
 

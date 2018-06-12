@@ -202,10 +202,10 @@ where
 
 impl<N: Magnitude, M: Magnitude, F1: Form, F2: Form> Mul<Fq<M, F2>> for Fq<N, F1>
 where
-    typenum::U2: Sub<N> + Sub<M>
+    N: Add<M>,
+    typenum::U5: Sub<Sum<N, M>>
 {
-    // TODO
-    type Output = Fq<N, Propagated>;
+    type Output = Fq<typenum::U2, Propagated>;
 
     fn mul(self, other: Fq<M, F2>) -> Self::Output {
         let x0;
@@ -564,10 +564,10 @@ fn test_mul() {
         let c4 = rng.gen::<u64>() >> 16;
         let c5 = rng.gen::<u64>() >> 16;
         let c6 = rng.gen::<u64>() >> 16;
-        let c7 = (rng.gen::<u64>() >> 19) + (rng.gen::<u64>() >> 19);
-        assert!(c7 <= 0x3ffffffffffe);
+        let c7 = (rng.gen::<u64>() >> 19) + (rng.gen::<u64>() >> 19) + (rng.gen::<u64>() >> 19);
+        assert!(c7 <= 0x5ffffffffffd);
 
-        let a = Fq::<typenum::U2, Abnormal>(c0, c1, c2, c3, c4, c5, c6, c7, PhantomData);
+        let a = Fq::<typenum::U3, Abnormal>(c0, c1, c2, c3, c4, c5, c6, c7, PhantomData);
 
         let c0 = rng.gen::<u64>() >> 16;
         let c1 = rng.gen::<u64>() >> 16;
@@ -576,8 +576,8 @@ fn test_mul() {
         let c4 = rng.gen::<u64>() >> 16;
         let c5 = rng.gen::<u64>() >> 16;
         let c6 = rng.gen::<u64>() >> 16;
-        let c7 = (rng.gen::<u64>() >> 19) + (rng.gen::<u64>() >> 19);
-        assert!(c7 <= 0x3ffffffffffe);
+        let c7 = (rng.gen::<u64>() >> 19) + (rng.gen::<u64>() >> 19) + (rng.gen::<u64>() >> 19);
+        assert!(c7 <= 0x5ffffffffffd);
 
         let b = Fq::<typenum::U2, Abnormal>(c0, c1, c2, c3, c4, c5, c6, c7, PhantomData);
 

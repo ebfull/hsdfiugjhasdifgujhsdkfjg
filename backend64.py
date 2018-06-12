@@ -97,6 +97,10 @@ assert(R > q)
 # magnitude 2 elements with this constant R?
 assert((MAX_MAG_2 * MAX_MAG_2) < (q*R))
 
+# We can actually perform it up to 2 + 3
+MAX_MAG_3 = ((2**MODULUS_BITS - 1)*3)
+assert((MAX_MAG_2 * MAX_MAG_3) < (q*R))
+
 # When we're reducing a field element (trying to reduce its magnitude) we
 # need to know how many times to "subtract" q from it. We can do this by
 # grabbing the most significant bits from the final limb (more significant

@@ -1,0 +1,12 @@
+[package]
+name = "hsdfiugjhasdifgujhsdkfjg"
+version = "0.0.0"
+authors = ["Sean Bowe <ewillbefull@gmail.com>"]
+license = "MIT/Apache-2.0"
+
+[dev-dependencies]
+rand = "*"
+
+[dependencies.typenum]
+version = "*"
+features = ["no_std"]

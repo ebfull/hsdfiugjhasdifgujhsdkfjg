@@ -209,7 +209,7 @@ where
     N: Add<N>,
     typenum::U5: Sub<Sum<N, N>>
 {
-    fn square(&self) -> Fq<typenum::U2, Propagated> {
+    pub fn square(&self) -> Fq<typenum::U2, Propagated> {
         let x0;
         let x1;
         let x2;

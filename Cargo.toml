@@ -8,9 +8,16 @@ license = "MIT/Apache-2.0"
 name = "lol"
 harness = false
 
-[dev-dependencies]
+[dependencies]
 rand = "*"
-criterion = "0.2"
+
+[dev-dependencies.pairing]
+version = "0.14"
+features = ["u128-support"]
+
+[dev-dependencies.criterion]
+version = "0.2"
+features = ["real_blackbox"]
 
 [dependencies.typenum]
 version = "*"

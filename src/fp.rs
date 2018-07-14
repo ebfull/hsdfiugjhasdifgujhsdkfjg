@@ -22,16 +22,16 @@ use core::marker::PhantomData;
 use core::ops::{Add, Mul, Neg, Sub};
 use core::simd::u64x8;
 
-use typenum::{self, UInt, B0, B1, UTerm};
-use typenum::marker_traits::Unsigned;
-use typenum::operator_aliases::{Prod, Sum, Diff};
 use rand::{Rand, Rng};
-use subtle::{Choice, ConditionallySwappable, ConditionallySelectable, ConstantTimeEq};
+use subtle::{Choice, ConditionallySelectable, ConditionallySwappable, ConstantTimeEq};
+use typenum::marker_traits::Unsigned;
+use typenum::operator_aliases::{Diff, Prod, Sum};
+use typenum::{self, B0, B1, UInt, UTerm};
 
 /// The form that the element is in, which describes the state
 /// of the carries and the underlying value.
 pub trait Form {
-    fn is_propagated() -> bool;
+    const IS_PROPAGATED: bool;
 }
 
 /// The element is normalized, so its representation is
@@ -50,22 +50,13 @@ pub enum Propagated {}
 pub enum Abnormal {}
 
 impl Form for Normalized {
-    #[inline(always)]
-    fn is_propagated() -> bool {
-        true
-    }
+    const IS_PROPAGATED: bool = true;
 }
 impl Form for Propagated {
-    #[inline(always)]
-    fn is_propagated() -> bool {
-        true
-    }
+    const IS_PROPAGATED: bool = true;
 }
 impl Form for Abnormal {
-    #[inline(always)]
-    fn is_propagated() -> bool {
-        false
-    }
+    const IS_PROPAGATED: bool = false;
 }
 
 /// This represents a magnitude that an `FpPacked` value is allowed to be.
@@ -78,10 +69,11 @@ pub trait PackedMagnitude: Unsigned {
     const P5: u64;
 
     type Unpacked: UnpackedMagnitude;
+    type UnpackedForm: Form;
 }
 
 /// This represents a magnitude that an `FpUnpacked` value is allowed to be.
-pub trait UnpackedMagnitude: Unsigned { }
+pub trait UnpackedMagnitude: Unsigned {}
 
 /// This represents a magnitude of `FpUnpacked` that can be packed into `FpPacked`.
 pub trait Packable: UnpackedMagnitude {
@@ -102,6 +94,7 @@ pub struct FpPacked<M: PackedMagnitude>(u64, u64, u64, u64, u64, u64, PhantomDat
 pub struct FpUnpacked<M: UnpackedMagnitude, F: Form>(u64x8, PhantomData<(M, F)>);
 
 impl<M: PackedMagnitude> ConditionallySelectable for FpPacked<M> {
+    #[inline]
     fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
         FpPacked(
             u64::conditional_select(&a.0, &b.0, choice),
@@ -115,14 +108,14 @@ impl<M: PackedMagnitude> ConditionallySelectable for FpPacked<M> {
     }
 }
 
-impl<M: PackedMagnitude> Copy for FpPacked<M> { }
+impl<M: PackedMagnitude> Copy for FpPacked<M> {}
 impl<M: PackedMagnitude> Clone for FpPacked<M> {
     fn clone(&self) -> FpPacked<M> {
         *self
     }
 }
 
-impl<M: UnpackedMagnitude, F: Form> Copy for FpUnpacked<M, F> { }
+impl<M: UnpackedMagnitude, F: Form> Copy for FpUnpacked<M, F> {}
 impl<M: UnpackedMagnitude, F: Form> Clone for FpUnpacked<M, F> {
     fn clone(&self) -> FpUnpacked<M, F> {
         *self
@@ -137,8 +130,7 @@ fn split(
     c3: u64,
     c4: u64,
     c5: u64,
-) -> (u64, u64, u64, u64, u64, u64, u64, u64)
-{
+) -> (u64, u64, u64, u64, u64, u64, u64, u64) {
     (
         c0 & 0xffffffffffff,
         ((c0 >> 48) | (c1 << 16)) & 0xffffffffffff,
@@ -147,7 +139,7 @@ fn split(
         c3 & 0xffffffffffff,
         ((c3 >> 48) | (c4 << 16)) & 0xffffffffffff,
         ((c4 >> 32) | (c5 << 32)) & 0xffffffffffff,
-        c5 >> 16
+        c5 >> 16,
     )
 }
 
@@ -160,14 +152,13 @@ fn merge(
     c4: u64,
     c5: u64,
     c6: u64,
-    c7: u64
-) -> (u64, u64, u64, u64, u64, u64)
-{
+    c7: u64,
+) -> (u64, u64, u64, u64, u64, u64) {
     (
-        (c0 >>  0) | (c1 << 48),
+        (c0 >> 0) | (c1 << 48),
         (c1 >> 16) | (c2 << 32),
         (c2 >> 32) | (c3 << 16),
-        (c4 >>  0) | (c5 << 48),
+        (c4 >> 0) | (c5 << 48),
         (c5 >> 16) | (c6 << 32),
         (c6 >> 32) | (c7 << 16),
     )
@@ -176,16 +167,15 @@ fn merge(
 impl<M: PackedMagnitude> FpPacked<M> {
     /// Converts a value in a packed representation to a value in an unpacked
     /// representation
-    pub fn unpack(self) -> FpUnpacked<M::Unpacked, Propagated> {
-        let (r0, r1, r2, r3, r4, r5, r6, r7) = split(self.0, self.1, self.2, self.3, self.4, self.5);
+    pub fn unpack(self) -> FpUnpacked<M::Unpacked, M::UnpackedForm> {
+        let (r0, r1, r2, r3, r4, r5, r6, r7) =
+            split(self.0, self.1, self.2, self.3, self.4, self.5);
 
-        FpUnpacked(
-            u64x8::new(r0, r1, r2, r3, r4, r5, r6, r7),
-            PhantomData
-        )
+        FpUnpacked(u64x8::new(r0, r1, r2, r3, r4, r5, r6, r7), PhantomData)
     }
 }
 
+// TODO: Support Abnormal / Normalized?
 impl<M: Packable> FpUnpacked<M, Propagated> {
     /// Converts a value in an unpacked representation to a value in a packed
     /// representation
@@ -205,6 +195,7 @@ impl<M: Packable> FpUnpacked<M, Propagated> {
     }
 }
 
+// TODO: This is not a "safe" API for creating random field elements.
 impl Rand for FpPacked<typenum::U2> {
     fn rand<R: Rng>(rng: &mut R) -> Self {
         let r0 = u64::rand(rng);
@@ -218,33 +209,46 @@ impl Rand for FpPacked<typenum::U2> {
     }
 }
 
-impl<M: PackedMagnitude> FpPacked<M>
-{
+impl<M: PackedMagnitude> FpPacked<M> {
     pub fn extend<N: PackedMagnitude>(self) -> FpPacked<N>
-        where N: Sub<M>
+    where
+        N: Sub<M>,
     {
         FpPacked(self.0, self.1, self.2, self.3, self.4, self.5, PhantomData)
     }
 }
 
 impl FpPacked<typenum::U1> {
-    pub fn is_zero(&self) -> Choice {
-        [self.0, self.1, self.2, self.3, self.4, self.5].ct_eq(
-            &[0, 0, 0, 0, 0, 0]
+    pub fn zero() -> Self {
+        FpPacked(0, 0, 0, 0, 0, 0, PhantomData)
+    }
+
+    pub fn one() -> Self {
+        FpPacked(
+            0x760900000002fffd,
+            0xebf4000bc40c0002,
+            0x5f48985753c758ba,
+            0x77ce585370525745,
+            0x5c071a97a256ec6d,
+            0x15f65ec3fa80e493,
+            PhantomData,
         )
+    }
+
+    pub fn is_zero(&self) -> Choice {
+        [self.0, self.1, self.2, self.3, self.4, self.5].ct_eq(&[0, 0, 0, 0, 0, 0])
     }
 
     pub fn is_equal(&self, other: &Self) -> Choice {
-        [self.0, self.1, self.2, self.3, self.4, self.5].ct_eq(
-            &[other.0, other.1, other.2, other.3, other.4, other.5]
-        )
+        [self.0, self.1, self.2, self.3, self.4, self.5]
+            .ct_eq(&[other.0, other.1, other.2, other.3, other.4, other.5])
     }
 }
 
-impl<M: UnpackedMagnitude, F: Form> FpUnpacked<M, F>
-{
+impl<M: UnpackedMagnitude, F: Form> FpUnpacked<M, F> {
     pub fn extend<N: UnpackedMagnitude>(self) -> FpUnpacked<N, F>
-        where N: Sub<M>
+    where
+        N: Sub<M>,
     {
         FpUnpacked(self.0, PhantomData)
     }
@@ -277,7 +281,8 @@ where
 
 /// Addition is defined over `FpUnpacked` values so long as the sum of the operand magnitudes
 /// is a valid magnitude; otherwise, overflow would occur.
-impl<M: UnpackedMagnitude, N: UnpackedMagnitude, F1: Form, F2: Form> Add<FpUnpacked<N, F2>> for FpUnpacked<M, F1>
+impl<M: UnpackedMagnitude, N: UnpackedMagnitude, F1: Form, F2: Form> Add<FpUnpacked<N, F2>>
+    for FpUnpacked<M, F1>
 where
     M: Add<N>,
     Sum<M, N>: UnpackedMagnitude,
@@ -350,19 +355,20 @@ where
                 EIGHT_MODULUS_4 * 4 * M::U64,
                 EIGHT_MODULUS_5 * 4 * M::U64,
                 EIGHT_MODULUS_6 * 4 * M::U64,
-                EIGHT_MODULUS_7 * 4 * M::U64
+                EIGHT_MODULUS_7 * 4 * M::U64,
             ) - self.0,
-            PhantomData
+            PhantomData,
         )
     }
 }
 
 /// TODO: document
 impl<M: PackedMagnitude, N: PackedMagnitude> Sub<FpPacked<N>> for FpPacked<M>
-where N: Add<typenum::U1>,
-      Sum<N, typenum::U1>: PackedMagnitude,
-      M: Add<Sum<N, typenum::U1>>,
-      Sum<M, Sum<N, typenum::U1>>: PackedMagnitude
+where
+    N: Add<typenum::U1>,
+    Sum<N, typenum::U1>: PackedMagnitude,
+    M: Add<Sum<N, typenum::U1>>,
+    Sum<M, Sum<N, typenum::U1>>: PackedMagnitude,
 {
     type Output = FpPacked<Sum<M, Sum<N, typenum::U1>>>;
 
@@ -373,7 +379,8 @@ where N: Add<typenum::U1>,
 }
 
 /// TODO: document
-impl<M: UnpackedMagnitude, N: UnpackedMagnitude, F1: Form, F2: Form> Sub<FpUnpacked<N, F2>> for FpUnpacked<M, F1>
+impl<M: UnpackedMagnitude, N: UnpackedMagnitude, F1: Form, F2: Form> Sub<FpUnpacked<N, F2>>
+    for FpUnpacked<M, F1>
 where
     N: Mul<typenum::U4>,
     Prod<N, typenum::U4>: UnpackedMagnitude,
@@ -440,8 +447,7 @@ impl<M: UnpackedMagnitude, F: Form> FpUnpacked<M, F> {
 
         #[inline(always)]
         fn substep(s: u64, m: u64, x: u64, b: &mut u64) -> u64 {
-            let tmp = (s | 0xffff000000000000)
-                    - (m * x + *b);
+            let tmp = (s | 0xffff000000000000) - (m * x + *b);
 
             *b = (!tmp) >> 48;
 
@@ -458,10 +464,7 @@ impl<M: UnpackedMagnitude, F: Form> FpUnpacked<M, F> {
         let r6 = substep(r6, EIGHT_MODULUS_6, x, &mut borrow);
         let r7 = substep(r7, EIGHT_MODULUS_7, x, &mut borrow);
 
-        FpUnpacked(
-            u64x8::new(r0, r1, r2, r3, r4, r5, r6, r7),
-            PhantomData
-        )
+        FpUnpacked(u64x8::new(r0, r1, r2, r3, r4, r5, r6, r7), PhantomData)
     }
 }
 
@@ -471,7 +474,9 @@ impl<M: PackedMagnitude> FpPacked<M> {
     /// to do this to a value of magnitude 1.
     #[inline]
     pub fn subtract_modulus(self) -> FpPacked<Diff<M, typenum::U1>>
-        where M: Sub<typenum::U1>, Diff<M, typenum::U1>: PackedMagnitude
+    where
+        M: Sub<typenum::U1>,
+        Diff<M, typenum::U1>: PackedMagnitude,
     {
         let mut borrow = 0;
         let r0 = sbb(self.0, SIX_MODULUS_0, &mut borrow);
@@ -498,7 +503,7 @@ impl<M: PackedMagnitude> FpPacked<M> {
         #[inline(always)]
         fn substep(s: u64, m: u64, x: u64, b: &mut u64) -> u64 {
             let tmp = (u128::from(s) | (u128::from(u64::max_value()) << 64))
-                    - (u128::from(m) * u128::from(x) + u128::from(*b));
+                - (u128::from(m) * u128::from(x) + u128::from(*b));
 
             *b = !((tmp >> 64) as u64);
 
@@ -525,7 +530,7 @@ impl<M: PackedMagnitude> FpPacked<M> {
 impl<M: PackedMagnitude, N: PackedMagnitude> Mul<FpPacked<N>> for FpPacked<M>
 where
     M: Mul<N>,
-    Prod<M, N>: PackedMagnitude
+    Prod<M, N>: PackedMagnitude,
 {
     type Output = FpPacked<typenum::U2>;
 
@@ -586,13 +591,14 @@ where
 
 /// Squaring is defined for `FpPacked` under the same conditions as
 /// self-multiplication.
-impl<M: PackedMagnitude> FpPacked<M>
-{
+impl<M: PackedMagnitude> FpPacked<M> {
     /// Squaring is defined for `FpPacked` under the same conditions as
     /// self-multiplication.
     #[inline]
     pub fn square(self) -> FpPacked<typenum::U2>
-        where M: Mul<M>, Prod<M, M>: PackedMagnitude
+    where
+        M: Mul<M>,
+        Prod<M, M>: PackedMagnitude,
     {
         let mut carry = 0;
         let r1 = mac_with_carry(0, self.0, self.1, &mut carry);
@@ -673,8 +679,7 @@ fn mont_reduce<M: PackedMagnitude>(
     r9: u64,
     r10: u64,
     r11: u64,
-) -> FpPacked<M>
-{
+) -> FpPacked<M> {
     // The Montgomery reduction here is based on Algorithm 14.32 in
     // Handbook of Applied Cryptography
     // <http://cacr.uwaterloo.ca/hac/about/chap14.pdf>.
@@ -738,7 +743,7 @@ fn mont_reduce<M: PackedMagnitude>(
     let r9 = mac_with_carry(r9, k, SIX_MODULUS_4, &mut carry);
     let r10 = mac_with_carry(r10, k, SIX_MODULUS_5, &mut carry);
     let r11 = adc(r11, carry2, &mut carry);
-    
+
     FpPacked(r6, r7, r8, r9, r10, r11, PhantomData)
 }
 
@@ -810,6 +815,7 @@ impl PackedMagnitude for typenum::U1 {
     const P5: u64 = 0x1a0111ea397fe69a;
 
     type Unpacked = typenum::U1;
+    type UnpackedForm = Normalized;
 }
 
 impl PackedMagnitude for typenum::U2 {
@@ -821,6 +827,7 @@ impl PackedMagnitude for typenum::U2 {
     const P5: u64 = 0x340223d472ffcd34;
 
     type Unpacked = typenum::U2;
+    type UnpackedForm = Propagated;
 }
 
 impl PackedMagnitude for typenum::U3 {
@@ -832,6 +839,7 @@ impl PackedMagnitude for typenum::U3 {
     const P5: u64 = 0x4e0335beac7fb3ce;
 
     type Unpacked = typenum::U3;
+    type UnpackedForm = Propagated;
 }
 
 impl PackedMagnitude for typenum::U4 {
@@ -843,6 +851,7 @@ impl PackedMagnitude for typenum::U4 {
     const P5: u64 = 0x680447a8e5ff9a69;
 
     type Unpacked = typenum::U4;
+    type UnpackedForm = Propagated;
 }
 
 impl PackedMagnitude for typenum::U5 {
@@ -854,6 +863,7 @@ impl PackedMagnitude for typenum::U5 {
     const P5: u64 = 0x820559931f7f8103;
 
     type Unpacked = typenum::U5;
+    type UnpackedForm = Propagated;
 }
 
 impl PackedMagnitude for typenum::U6 {
@@ -865,6 +875,7 @@ impl PackedMagnitude for typenum::U6 {
     const P5: u64 = 0x9c066b7d58ff679d;
 
     type Unpacked = typenum::U5;
+    type UnpackedForm = Propagated;
 }
 
 impl PackedMagnitude for typenum::U7 {
@@ -876,6 +887,7 @@ impl PackedMagnitude for typenum::U7 {
     const P5: u64 = 0xb6077d67927f4e38;
 
     type Unpacked = typenum::U6;
+    type UnpackedForm = Propagated;
 }
 
 impl PackedMagnitude for typenum::U8 {
@@ -887,6 +899,7 @@ impl PackedMagnitude for typenum::U8 {
     const P5: u64 = 0xd0088f51cbff34d2;
 
     type Unpacked = typenum::U7;
+    type UnpackedForm = Propagated;
 }
 
 impl PackedMagnitude for typenum::U9 {
@@ -898,6 +911,7 @@ impl PackedMagnitude for typenum::U9 {
     const P5: u64 = 0xea09a13c057f1b6c;
 
     type Unpacked = typenum::U8;
+    type UnpackedForm = Propagated;
 }
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
@@ -1020,8 +1034,10 @@ fn test_reductions() {
     let rng = &mut thread_rng();
 
     for _ in 0..10000 {
-        let a = FpPacked::rand(rng) + FpPacked::rand(rng) + FpPacked::rand(rng) + FpPacked::rand(rng);
-        let b = FpPacked::rand(rng) + FpPacked::rand(rng) + FpPacked::rand(rng) + FpPacked::rand(rng);
+        let a =
+            FpPacked::rand(rng) + FpPacked::rand(rng) + FpPacked::rand(rng) + FpPacked::rand(rng);
+        let b =
+            FpPacked::rand(rng) + FpPacked::rand(rng) + FpPacked::rand(rng) + FpPacked::rand(rng);
 
         let x = a.unpack();
         let y = b.unpack();

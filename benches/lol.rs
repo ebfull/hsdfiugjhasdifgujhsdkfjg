@@ -2,25 +2,22 @@
 extern crate criterion;
 extern crate rand;
 
-
-extern crate typenum;
 extern crate pairing;
 extern crate subtle;
+extern crate typenum;
 
-use subtle::{
-    ConditionallyAssignable
-};
+use subtle::ConditionallyAssignable;
 
 use rand::{OsRng, Rand};
 
 extern crate hsdfiugjhasdifgujhsdkfjg;
 use hsdfiugjhasdifgujhsdkfjg::fp::{FpPacked, Num};
 
-use criterion::{Criterion};
+use criterion::Criterion;
 
 struct Fq2 {
     c0: FpPacked<typenum::U2>,
-    c1: FpPacked<typenum::U2>
+    c1: FpPacked<typenum::U2>,
 }
 
 impl Fq2 {
@@ -32,7 +29,7 @@ impl Fq2 {
 
         Fq2 {
             c0: c0,
-            c1: c1.reduce()
+            c1: c1.reduce(),
         }
     }
 }
@@ -99,7 +96,7 @@ impl G1 {
         G1 {
             x: x.reduce().pack().reduce(),
             y: y.reduce(),
-            z: z.reduce()
+            z: z.reduce(),
         }
     }
 
@@ -129,163 +126,171 @@ impl G1 {
         G1 {
             x: x.reduce().pack().reduce(),
             y: y.reduce().extend(),
-            z: z.reduce().extend()
+            z: z.reduce().extend(),
         }
     }
 }
 
 fn reduce_element(c: &mut Criterion) {
     use pairing::bls12_381;
-    use pairing::{Field, CurveProjective};
-    
+    use pairing::{CurveProjective, Field};
+
     c.bench_function("fp_mul", |b| {
         let mut rng = OsRng::new().unwrap();
 
-        b.iter_with_setup(move || {
-            let x = FpPacked::rand(&mut rng);
-            let y = FpPacked::rand(&mut rng);
+        b.iter_with_setup(
+            move || {
+                let x = FpPacked::rand(&mut rng);
+                let y = FpPacked::rand(&mut rng);
 
-            (x, y)
-        }, |(x, y)| {
-            (x * y).subtract_modulus()
-        });
+                (x, y)
+            },
+            |(x, y)| (x * y).subtract_modulus(),
+        );
     });
 
     c.bench_function("old_fp_mul", |b| {
         let mut rng = OsRng::new().unwrap();
 
-        b.iter_with_setup(move || {
-            let x = bls12_381::Fq::rand(&mut rng);
-            let y = bls12_381::Fq::rand(&mut rng);
+        b.iter_with_setup(
+            move || {
+                let x = bls12_381::Fq::rand(&mut rng);
+                let y = bls12_381::Fq::rand(&mut rng);
 
-            (x, y)
-        }, |(mut x, y)| {
-            x.mul_assign(&y);
-            x
-        });
+                (x, y)
+            },
+            |(mut x, y)| {
+                x.mul_assign(&y);
+                x
+            },
+        );
     });
 
     c.bench_function("fp_square", |b| {
         let mut rng = OsRng::new().unwrap();
 
-        b.iter_with_setup(move || {
-            let x = FpPacked::rand(&mut rng);
+        b.iter_with_setup(
+            move || {
+                let x = FpPacked::rand(&mut rng);
 
-            x
-        }, |x| {
-            x.square().subtract_modulus()
-        });
+                x
+            },
+            |x| x.square().subtract_modulus(),
+        );
     });
 
     c.bench_function("old_fp_square", |b| {
         let mut rng = OsRng::new().unwrap();
 
-        b.iter_with_setup(move || {
-            let x = bls12_381::Fq::rand(&mut rng);
+        b.iter_with_setup(
+            move || {
+                let x = bls12_381::Fq::rand(&mut rng);
 
-            x
-        }, |mut x| {
-            x.square();
-            x
-        });
+                x
+            },
+            |mut x| {
+                x.square();
+                x
+            },
+        );
     });
 
     c.bench_function("fp_reduce", |b| {
         let mut rng = OsRng::new().unwrap();
 
-        b.iter_with_setup(move || {
-            -------FpPacked::rand(&mut rng)
-        }, |x| {
-            x.reduce()
-        });
+        b.iter_with_setup(move || -------FpPacked::rand(&mut rng), |x| x.reduce());
     });
 
     c.bench_function("fp_subtract_modulus", |b| {
         let mut rng = OsRng::new().unwrap();
 
-        b.iter_with_setup(move || {
-            -------FpPacked::rand(&mut rng)
-        }, |x| {
-            x.subtract_modulus()
-        });
+        b.iter_with_setup(
+            move || -------FpPacked::rand(&mut rng),
+            |x| x.subtract_modulus(),
+        );
     });
 
     c.bench_function("fq2_square", |b| {
         let mut rng = OsRng::new().unwrap();
 
-        b.iter_with_setup(move || {
-            Fq2 {
+        b.iter_with_setup(
+            move || Fq2 {
                 c0: FpPacked::rand(&mut rng),
                 c1: FpPacked::rand(&mut rng),
-            }
-        }, |x| {
-            x.square()
-        });
+            },
+            |x| x.square(),
+        );
     });
 
     c.bench_function("old_fq2_square", |b| {
         let mut rng = OsRng::new().unwrap();
 
-        b.iter_with_setup(move || {
-            bls12_381::Fq2::rand(&mut rng)
-        }, |mut x| {
-            x.square();
-            x
-        });
+        b.iter_with_setup(
+            move || bls12_381::Fq2::rand(&mut rng),
+            |mut x| {
+                x.square();
+                x
+            },
+        );
     });
 
     c.bench_function("g1_double", |b| {
         let mut rng = OsRng::new().unwrap();
 
-        b.iter_with_setup(move || {
-            G1 {
+        b.iter_with_setup(
+            move || G1 {
                 x: FpPacked::rand(&mut rng).extend(),
                 y: FpPacked::rand(&mut rng).extend(),
-                z: FpPacked::rand(&mut rng).extend()
-            }
-        }, |x| {
-            x.double()
-        });
+                z: FpPacked::rand(&mut rng).extend(),
+            },
+            |x| x.double(),
+        );
     });
 
     c.bench_function("old_g1_double", |b| {
         let mut rng = OsRng::new().unwrap();
 
-        b.iter_with_setup(move || {
-            bls12_381::G1::rand(&mut rng)
-        }, |mut x| {
-            x.double();
-            x
-        });
+        b.iter_with_setup(
+            move || bls12_381::G1::rand(&mut rng),
+            |mut x| {
+                x.double();
+                x
+            },
+        );
     });
 
     c.bench_function("g1_add", |b| {
         let mut rng = OsRng::new().unwrap();
 
-        b.iter_with_setup(move || {
-            (G1 {
-                x: FpPacked::rand(&mut rng),
-                y: FpPacked::rand(&mut rng),
-                z: FpPacked::rand(&mut rng)
-            }, G1 {
-                x: FpPacked::rand(&mut rng),
-                y: FpPacked::rand(&mut rng),
-                z: FpPacked::rand(&mut rng)
-            })
-        }, |(x, y)| {
-            G1::add(x, y)
-        });
+        b.iter_with_setup(
+            move || {
+                (
+                    G1 {
+                        x: FpPacked::rand(&mut rng),
+                        y: FpPacked::rand(&mut rng),
+                        z: FpPacked::rand(&mut rng),
+                    },
+                    G1 {
+                        x: FpPacked::rand(&mut rng),
+                        y: FpPacked::rand(&mut rng),
+                        z: FpPacked::rand(&mut rng),
+                    },
+                )
+            },
+            |(x, y)| G1::add(x, y),
+        );
     });
 
     c.bench_function("old_g1_add", |b| {
         let mut rng = OsRng::new().unwrap();
 
-        b.iter_with_setup(move || {
-            (bls12_381::G1::rand(&mut rng), bls12_381::G1::rand(&mut rng))
-        }, |(mut x, y)| {
-            x.add_assign(&y);
-            x
-        });
+        b.iter_with_setup(
+            move || (bls12_381::G1::rand(&mut rng), bls12_381::G1::rand(&mut rng)),
+            |(mut x, y)| {
+                x.add_assign(&y);
+                x
+            },
+        );
     });
 }
 

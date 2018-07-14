@@ -4,7 +4,6 @@
 //! curve construction.
 
 #![feature(stdsimd)]
-
 // In test mode, we'll enable the standard library, but not
 // otherwise.
 #![cfg_attr(not(test), no_std)]
@@ -16,7 +15,7 @@
 extern crate core;
 
 extern crate rand;
-extern crate typenum;
 extern crate subtle;
+extern crate typenum;
 
 pub mod fp;

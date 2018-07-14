@@ -128,6 +128,20 @@ where
     }
 }
 
+impl<M: PackedMagnitude, N: PackedMagnitude> Sub<FpPacked<N>> for FpPacked<M>
+where N: Add<typenum::U1>,
+      Sum<N, typenum::U1>: PackedMagnitude,
+      M: Add<Sum<N, typenum::U1>>,
+      Sum<M, Sum<N, typenum::U1>>: PackedMagnitude
+{
+    type Output = FpPacked<Sum<M, Sum<N, typenum::U1>>>;
+
+    #[inline(always)]
+    fn sub(self, rhs: FpPacked<N>) -> Self::Output {
+        self + (-rhs)
+    }
+}
+
 impl<M: PackedMagnitude> FpPacked<M> {
     /// This subtracts the modulus p unless the result is negative, producing
     /// a value of one less magnitude. It's impossible (and unnecessary)
@@ -151,6 +165,34 @@ impl<M: PackedMagnitude> FpPacked<M> {
         r.conditional_swap(&mut s, Choice::from(borrow as u8));
 
         r
+    }
+
+    // TODO: figure out if this is accurate
+    #[inline]
+    pub fn reduce(self) -> FpPacked<typenum::U2> {
+        // Compute how many times we should subtract modulus
+        let x = (self.5 & 0xe000000000000000) / SIX_MODULUS_5;
+
+        fn substep(s: u64, m: u64, x: u64, b: &mut u64) -> u64 {
+            let tmp = (u128::from(s) | (u128::from(u64::max_value()) << 64))
+                    - (u128::from(m) * u128::from(x) + u128::from(*b));
+
+            *b = !((tmp >> 64) as u64);
+
+            tmp as u64
+        }
+
+        let mut borrow = 0;
+        let r0 = substep(self.0, SIX_MODULUS_0, x, &mut borrow);
+        let r1 = substep(self.1, SIX_MODULUS_1, x, &mut borrow);
+        let r2 = substep(self.2, SIX_MODULUS_2, x, &mut borrow);
+        let r3 = substep(self.3, SIX_MODULUS_3, x, &mut borrow);
+        let r4 = substep(self.4, SIX_MODULUS_4, x, &mut borrow);
+        let r5 = substep(self.5, SIX_MODULUS_5, x, &mut borrow);
+
+        debug_assert!(borrow == 0);
+
+        FpPacked(r0, r1, r2, r3, r4, r5, PhantomData)
     }
 }
 
@@ -486,6 +528,27 @@ impl PackedMagnitude for typenum::U9 {
 }
 
 #[test]
+fn test_squaring_consistent() {
+    use rand::thread_rng;
+
+    let rng = &mut thread_rng();
+
+    for _ in 0..100000 {
+        let a = FpPacked::rand(rng);
+
+        let b = a * a;
+        let c = a.square();
+
+        assert_eq!(b.0, c.0);
+        assert_eq!(b.1, c.1);
+        assert_eq!(b.2, c.2);
+        assert_eq!(b.3, c.3);
+        assert_eq!(b.4, c.4);
+        assert_eq!(b.5, c.5);
+    }
+}
+
+#[test]
 fn test_mont_reduce_magnitude() {
     use rand::thread_rng;
 
@@ -518,5 +581,19 @@ fn test_mont_reduce_magnitude() {
         let c = a * b;
 
         assert!(c.5 >> 62 == 0);
+    }
+}
+
+#[test]
+fn test_reduce_magnitude() {
+    use rand::thread_rng;
+
+    let rng = &mut thread_rng();
+
+    for _ in 0..100000 {
+        let a = -(-(-(FpPacked::rand(rng))));
+        let a = a.reduce();
+
+        assert!(a.5 >> 62 == 0);
     }
 }

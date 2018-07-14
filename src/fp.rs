@@ -26,7 +26,7 @@ use typenum::{self, UInt, B0, B1, UTerm};
 use typenum::marker_traits::Unsigned;
 use typenum::operator_aliases::{Prod, Sum, Diff};
 use rand::{Rand, Rng};
-use subtle::{Choice, ConditionallySwappable, ConditionallySelectable};
+use subtle::{Choice, ConditionallySwappable, ConditionallySelectable, ConstantTimeEq};
 
 /// The form that the element is in, which describes the state
 /// of the carries and the underlying value.
@@ -82,6 +82,11 @@ pub trait PackedMagnitude: Unsigned {
 
 /// This represents a magnitude that an `FpUnpacked` value is allowed to be.
 pub trait UnpackedMagnitude: Unsigned { }
+
+/// This represents a magnitude of `FpUnpacked` that can be packed into `FpPacked`.
+pub trait Packable: UnpackedMagnitude {
+    type Packed: PackedMagnitude;
+}
 
 /// `FpPacked` implements arithmetic over Fp with six 64-bit limbs. Values of `FpPacked` have a statically
 /// known magnitude `M` which guarantees that the value is less than or equal to `M * (q - 1)`.
@@ -181,10 +186,10 @@ impl<M: PackedMagnitude> FpPacked<M> {
     }
 }
 
-impl FpUnpacked<typenum::U2, Propagated> {
+impl<M: Packable> FpUnpacked<M, Propagated> {
     /// Converts a value in an unpacked representation to a value in a packed
     /// representation
-    pub fn pack(self) -> FpPacked<typenum::U3> {
+    pub fn pack(self) -> FpPacked<M::Packed> {
         let r0 = self.0.extract(0);
         let r1 = self.0.extract(1);
         let r2 = self.0.extract(2);
@@ -219,6 +224,20 @@ impl<M: PackedMagnitude> FpPacked<M>
         where N: Sub<M>
     {
         FpPacked(self.0, self.1, self.2, self.3, self.4, self.5, PhantomData)
+    }
+}
+
+impl FpPacked<typenum::U1> {
+    pub fn is_zero(&self) -> Choice {
+        [self.0, self.1, self.2, self.3, self.4, self.5].ct_eq(
+            &[0, 0, 0, 0, 0, 0]
+        )
+    }
+
+    pub fn is_equal(&self, other: &Self) -> Choice {
+        [self.0, self.1, self.2, self.3, self.4, self.5].ct_eq(
+            &[other.0, other.1, other.2, other.3, other.4, other.5]
+        )
     }
 }
 
@@ -423,17 +442,17 @@ impl<M: UnpackedMagnitude, F: Form> FpUnpacked<M, F> {
         let r0 = (r0 | 0xffff000000000000) - (EIGHT_MODULUS_0 * x);
         let r1 = (r1 | 0xffff000000000000) - (EIGHT_MODULUS_1 * x + ((!r0) >> 48));
         let r0 = r0 & 0x0000ffffffffffff;
-        let r2 = (r2 | 0xffff000000000000) - (EIGHT_MODULUS_1 * x + ((!r1) >> 48));
+        let r2 = (r2 | 0xffff000000000000) - (EIGHT_MODULUS_2 * x + ((!r1) >> 48));
         let r1 = r1 & 0x0000ffffffffffff;
-        let r3 = (r3 | 0xffff000000000000) - (EIGHT_MODULUS_1 * x + ((!r2) >> 48));
+        let r3 = (r3 | 0xffff000000000000) - (EIGHT_MODULUS_3 * x + ((!r2) >> 48));
         let r2 = r2 & 0x0000ffffffffffff;
-        let r4 = (r4 | 0xffff000000000000) - (EIGHT_MODULUS_1 * x + ((!r3) >> 48));
+        let r4 = (r4 | 0xffff000000000000) - (EIGHT_MODULUS_4 * x + ((!r3) >> 48));
         let r3 = r3 & 0x0000ffffffffffff;
-        let r5 = (r5 | 0xffff000000000000) - (EIGHT_MODULUS_1 * x + ((!r4) >> 48));
+        let r5 = (r5 | 0xffff000000000000) - (EIGHT_MODULUS_5 * x + ((!r4) >> 48));
         let r4 = r4 & 0x0000ffffffffffff;
-        let r6 = (r6 | 0xffff000000000000) - (EIGHT_MODULUS_1 * x + ((!r5) >> 48));
+        let r6 = (r6 | 0xffff000000000000) - (EIGHT_MODULUS_6 * x + ((!r5) >> 48));
         let r5 = r5 & 0x0000ffffffffffff;
-        let r7 = (r7 | 0xffff000000000000) - (EIGHT_MODULUS_1 * x + ((!r6) >> 48));
+        let r7 = (r7 | 0xffff000000000000) - (EIGHT_MODULUS_7 * x + ((!r6) >> 48));
         let r6 = r6 & 0x0000ffffffffffff;
 
         FpUnpacked(
@@ -747,6 +766,38 @@ fn mac_with_carry(a: u64, b: u64, c: u64, carry: &mut u64) -> u64 {
     tmp as u64
 }
 
+impl Packable for typenum::U0 {
+    type Packed = typenum::U1;
+}
+
+impl Packable for typenum::U1 {
+    type Packed = typenum::U2;
+}
+
+impl Packable for typenum::U2 {
+    type Packed = typenum::U3;
+}
+
+impl Packable for typenum::U3 {
+    type Packed = typenum::U4;
+}
+
+impl Packable for typenum::U4 {
+    type Packed = typenum::U5;
+}
+
+impl Packable for typenum::U5 {
+    type Packed = typenum::U7;
+}
+
+impl Packable for typenum::U6 {
+    type Packed = typenum::U8;
+}
+
+impl Packable for typenum::U7 {
+    type Packed = typenum::U9;
+}
+
 impl PackedMagnitude for typenum::U1 {
     const P0: u64 = 0xb9feffffffffaaab;
     const P1: u64 = 0x1eabfffeb153ffff;
@@ -928,5 +979,68 @@ fn test_reduce_magnitude() {
         let a = a.reduce();
 
         assert!(a.5 >> 62 == 0);
+    }
+}
+
+#[test]
+fn test_associativity() {
+    use rand::thread_rng;
+
+    let rng = &mut thread_rng();
+
+    for _ in 0..100000 {
+        let a = FpPacked::rand(rng) + FpPacked::rand(rng);
+        let b = FpPacked::rand(rng);
+        let c = FpPacked::rand(rng) + FpPacked::rand(rng);
+
+        let x1 = ((a * b) * c).subtract_modulus();
+        let x2 = (a * (b * c)).subtract_modulus();
+
+        assert!(x1.is_equal(&x2).unwrap_u8() == 1);
+
+        let a = a.reduce().subtract_modulus();
+        let b = b.reduce().subtract_modulus();
+        let c = c.reduce().subtract_modulus();
+
+        let y1 = ((a * b) * c).subtract_modulus();
+        let y2 = (a * (b * c)).subtract_modulus();
+
+        assert!(y1.is_equal(&y2).unwrap_u8() == 1);
+        assert!(x1.is_equal(&y1).unwrap_u8() == 1);
+    }
+}
+
+#[test]
+fn test_reductions() {
+    use rand::thread_rng;
+
+    let rng = &mut thread_rng();
+
+    for _ in 0..10000 {
+        let a = FpPacked::rand(rng) + FpPacked::rand(rng) + FpPacked::rand(rng) + FpPacked::rand(rng);
+        let b = FpPacked::rand(rng) + FpPacked::rand(rng) + FpPacked::rand(rng) + FpPacked::rand(rng);
+
+        let x = a.unpack();
+        let y = b.unpack();
+        let x = x * Num::<typenum::U123>::new();
+        let y = y * Num::<typenum::U321>::new();
+        let xy = x + y;
+        let xy = xy.reduce().pack();
+
+        let a = a.reduce();
+        let b = b.reduce();
+
+        let x = a.unpack();
+        let y = b.unpack();
+        let x = x * Num::<typenum::U123>::new();
+        let y = y * Num::<typenum::U321>::new();
+
+        let xy_prime = x + y;
+        let xy_prime = xy_prime.reduce().pack();
+
+        let xy = xy.reduce().subtract_modulus();
+        let xy_prime = xy_prime.reduce().subtract_modulus();
+
+        assert!(xy.is_equal(&xy_prime).unwrap_u8() == 1);
     }
 }

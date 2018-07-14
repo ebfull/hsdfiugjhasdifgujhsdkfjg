@@ -297,17 +297,17 @@ const INV: u64 = 0x89f3fffcfffcfffd;
 #[inline(always)]
 fn mont_reduce<M: PackedMagnitude>(
     r0: u64,
-    mut r1: u64,
-    mut r2: u64,
-    mut r3: u64,
-    mut r4: u64,
-    mut r5: u64,
-    mut r6: u64,
-    mut r7: u64,
-    mut r8: u64,
-    mut r9: u64,
-    mut r10: u64,
-    mut r11: u64,
+    r1: u64,
+    r2: u64,
+    r3: u64,
+    r4: u64,
+    r5: u64,
+    r6: u64,
+    r7: u64,
+    r8: u64,
+    r9: u64,
+    r10: u64,
+    r11: u64,
 ) -> FpPacked<M>
 {
     // The Montgomery reduction here is based on Algorithm 14.32 in
@@ -317,62 +317,62 @@ fn mont_reduce<M: PackedMagnitude>(
     let k = r0.wrapping_mul(INV);
     let mut carry = 0;
     mac_with_carry(r0, k, SIX_MODULUS_0, &mut carry);
-    r1 = mac_with_carry(r1, k, SIX_MODULUS_1, &mut carry);
-    r2 = mac_with_carry(r2, k, SIX_MODULUS_2, &mut carry);
-    r3 = mac_with_carry(r3, k, SIX_MODULUS_3, &mut carry);
-    r4 = mac_with_carry(r4, k, SIX_MODULUS_4, &mut carry);
-    r5 = mac_with_carry(r5, k, SIX_MODULUS_5, &mut carry);
-    r6 = adc(r6, 0, &mut carry);
+    let r1 = mac_with_carry(r1, k, SIX_MODULUS_1, &mut carry);
+    let r2 = mac_with_carry(r2, k, SIX_MODULUS_2, &mut carry);
+    let r3 = mac_with_carry(r3, k, SIX_MODULUS_3, &mut carry);
+    let r4 = mac_with_carry(r4, k, SIX_MODULUS_4, &mut carry);
+    let r5 = mac_with_carry(r5, k, SIX_MODULUS_5, &mut carry);
+    let r6 = adc(r6, 0, &mut carry);
     let carry2 = carry;
     let k = r1.wrapping_mul(INV);
     let mut carry = 0;
     mac_with_carry(r1, k, SIX_MODULUS_0, &mut carry);
-    r2 = mac_with_carry(r2, k, SIX_MODULUS_1, &mut carry);
-    r3 = mac_with_carry(r3, k, SIX_MODULUS_2, &mut carry);
-    r4 = mac_with_carry(r4, k, SIX_MODULUS_3, &mut carry);
-    r5 = mac_with_carry(r5, k, SIX_MODULUS_4, &mut carry);
-    r6 = mac_with_carry(r6, k, SIX_MODULUS_5, &mut carry);
-    r7 = adc(r7, carry2, &mut carry);
+    let r2 = mac_with_carry(r2, k, SIX_MODULUS_1, &mut carry);
+    let r3 = mac_with_carry(r3, k, SIX_MODULUS_2, &mut carry);
+    let r4 = mac_with_carry(r4, k, SIX_MODULUS_3, &mut carry);
+    let r5 = mac_with_carry(r5, k, SIX_MODULUS_4, &mut carry);
+    let r6 = mac_with_carry(r6, k, SIX_MODULUS_5, &mut carry);
+    let r7 = adc(r7, carry2, &mut carry);
     let carry2 = carry;
     let k = r2.wrapping_mul(INV);
     let mut carry = 0;
     mac_with_carry(r2, k, SIX_MODULUS_0, &mut carry);
-    r3 = mac_with_carry(r3, k, SIX_MODULUS_1, &mut carry);
-    r4 = mac_with_carry(r4, k, SIX_MODULUS_2, &mut carry);
-    r5 = mac_with_carry(r5, k, SIX_MODULUS_3, &mut carry);
-    r6 = mac_with_carry(r6, k, SIX_MODULUS_4, &mut carry);
-    r7 = mac_with_carry(r7, k, SIX_MODULUS_5, &mut carry);
-    r8 = adc(r8, carry2, &mut carry);
+    let r3 = mac_with_carry(r3, k, SIX_MODULUS_1, &mut carry);
+    let r4 = mac_with_carry(r4, k, SIX_MODULUS_2, &mut carry);
+    let r5 = mac_with_carry(r5, k, SIX_MODULUS_3, &mut carry);
+    let r6 = mac_with_carry(r6, k, SIX_MODULUS_4, &mut carry);
+    let r7 = mac_with_carry(r7, k, SIX_MODULUS_5, &mut carry);
+    let r8 = adc(r8, carry2, &mut carry);
     let carry2 = carry;
     let k = r3.wrapping_mul(INV);
     let mut carry = 0;
     mac_with_carry(r3, k, SIX_MODULUS_0, &mut carry);
-    r4 = mac_with_carry(r4, k, SIX_MODULUS_1, &mut carry);
-    r5 = mac_with_carry(r5, k, SIX_MODULUS_2, &mut carry);
-    r6 = mac_with_carry(r6, k, SIX_MODULUS_3, &mut carry);
-    r7 = mac_with_carry(r7, k, SIX_MODULUS_4, &mut carry);
-    r8 = mac_with_carry(r8, k, SIX_MODULUS_5, &mut carry);
-    r9 = adc(r9, carry2, &mut carry);
+    let r4 = mac_with_carry(r4, k, SIX_MODULUS_1, &mut carry);
+    let r5 = mac_with_carry(r5, k, SIX_MODULUS_2, &mut carry);
+    let r6 = mac_with_carry(r6, k, SIX_MODULUS_3, &mut carry);
+    let r7 = mac_with_carry(r7, k, SIX_MODULUS_4, &mut carry);
+    let r8 = mac_with_carry(r8, k, SIX_MODULUS_5, &mut carry);
+    let r9 = adc(r9, carry2, &mut carry);
     let carry2 = carry;
     let k = r4.wrapping_mul(INV);
     let mut carry = 0;
     mac_with_carry(r4, k, SIX_MODULUS_0, &mut carry);
-    r5 = mac_with_carry(r5, k, SIX_MODULUS_1, &mut carry);
-    r6 = mac_with_carry(r6, k, SIX_MODULUS_2, &mut carry);
-    r7 = mac_with_carry(r7, k, SIX_MODULUS_3, &mut carry);
-    r8 = mac_with_carry(r8, k, SIX_MODULUS_4, &mut carry);
-    r9 = mac_with_carry(r9, k, SIX_MODULUS_5, &mut carry);
-    r10 = adc(r10, carry2, &mut carry);
+    let r5 = mac_with_carry(r5, k, SIX_MODULUS_1, &mut carry);
+    let r6 = mac_with_carry(r6, k, SIX_MODULUS_2, &mut carry);
+    let r7 = mac_with_carry(r7, k, SIX_MODULUS_3, &mut carry);
+    let r8 = mac_with_carry(r8, k, SIX_MODULUS_4, &mut carry);
+    let r9 = mac_with_carry(r9, k, SIX_MODULUS_5, &mut carry);
+    let r10 = adc(r10, carry2, &mut carry);
     let carry2 = carry;
     let k = r5.wrapping_mul(INV);
     let mut carry = 0;
     mac_with_carry(r5, k, SIX_MODULUS_0, &mut carry);
-    r6 = mac_with_carry(r6, k, SIX_MODULUS_1, &mut carry);
-    r7 = mac_with_carry(r7, k, SIX_MODULUS_2, &mut carry);
-    r8 = mac_with_carry(r8, k, SIX_MODULUS_3, &mut carry);
-    r9 = mac_with_carry(r9, k, SIX_MODULUS_4, &mut carry);
-    r10 = mac_with_carry(r10, k, SIX_MODULUS_5, &mut carry);
-    r11 = adc(r11, carry2, &mut carry);
+    let r6 = mac_with_carry(r6, k, SIX_MODULUS_1, &mut carry);
+    let r7 = mac_with_carry(r7, k, SIX_MODULUS_2, &mut carry);
+    let r8 = mac_with_carry(r8, k, SIX_MODULUS_3, &mut carry);
+    let r9 = mac_with_carry(r9, k, SIX_MODULUS_4, &mut carry);
+    let r10 = mac_with_carry(r10, k, SIX_MODULUS_5, &mut carry);
+    let r11 = adc(r11, carry2, &mut carry);
     
     FpPacked(r6, r7, r8, r9, r10, r11, PhantomData)
 }

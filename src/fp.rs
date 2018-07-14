@@ -20,14 +20,55 @@
 
 use core::marker::PhantomData;
 use core::ops::{Add, Mul, Neg, Sub};
+use core::simd::u64x8;
 
-use typenum;
+use typenum::{self, UInt, B0, B1, UTerm};
 use typenum::marker_traits::Unsigned;
 use typenum::operator_aliases::{Prod, Sum, Diff};
 use rand::{Rand, Rng};
 use subtle::{Choice, ConditionallySwappable, ConditionallySelectable};
 
-/// This represents a magnitude that an `FpPacked` element is allowed to be.
+/// The form that the element is in, which describes the state
+/// of the carries and the underlying value.
+pub trait Form {
+    fn is_propagated() -> bool;
+}
+
+/// The element is normalized, so its representation is
+/// canonical. There are no carries, and the value is
+/// "in the field" when extracted.
+#[derive(Debug)]
+pub enum Normalized {}
+
+/// The element is not normalized, but the carries of
+/// the lower limbs have been propagated.
+#[derive(Debug)]
+pub enum Propagated {}
+
+/// The element may have outstanding carries in any limbs.
+#[derive(Debug)]
+pub enum Abnormal {}
+
+impl Form for Normalized {
+    #[inline(always)]
+    fn is_propagated() -> bool {
+        true
+    }
+}
+impl Form for Propagated {
+    #[inline(always)]
+    fn is_propagated() -> bool {
+        true
+    }
+}
+impl Form for Abnormal {
+    #[inline(always)]
+    fn is_propagated() -> bool {
+        false
+    }
+}
+
+/// This represents a magnitude that an `FpPacked` value is allowed to be.
 pub trait PackedMagnitude: Unsigned {
     const P0: u64;
     const P1: u64;
@@ -37,11 +78,21 @@ pub trait PackedMagnitude: Unsigned {
     const P5: u64;
 }
 
+/// This represents a magnitude that an `FpUnpacked` value is allowed to be.
+pub trait UnpackedMagnitude: Unsigned { }
+
 /// `FpPacked` implements arithmetic over Fp with six 64-bit limbs. Values of `FpPacked` have a statically
 /// known magnitude `M` which guarantees that the value is less than or equal to `M * (q - 1)`.
 ///
 /// The smallest valid magnitude is 1, and the largest valid magnitude is 9.
 pub struct FpPacked<M: PackedMagnitude>(u64, u64, u64, u64, u64, u64, PhantomData<M>);
+
+/// `FpUnpacked` implements arithmetic over Fp with eight 64-bit words, all except the most significant
+/// being 48-bit limbs. Values of `FpUnpacked` have a statically known magnitude `M` which guarantees
+/// that each limb is less than or equal to its largest value multiplied by `M`.
+///
+/// The largest valid magnitude is 53257.
+pub struct FpUnpacked<M: UnpackedMagnitude, F: Form>(u64x8, PhantomData<(M, F)>);
 
 impl<M: PackedMagnitude> ConditionallySelectable for FpPacked<M> {
     fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
@@ -60,6 +111,13 @@ impl<M: PackedMagnitude> ConditionallySelectable for FpPacked<M> {
 impl<M: PackedMagnitude> Copy for FpPacked<M> { }
 impl<M: PackedMagnitude> Clone for FpPacked<M> {
     fn clone(&self) -> FpPacked<M> {
+        *self
+    }
+}
+
+impl<M: UnpackedMagnitude, F: Form> Copy for FpUnpacked<M, F> { }
+impl<M: UnpackedMagnitude, F: Form> Clone for FpUnpacked<M, F> {
+    fn clone(&self) -> FpUnpacked<M, F> {
         *self
     }
 }
@@ -102,6 +160,21 @@ where
     }
 }
 
+/// Addition is defined over `FpUnpacked` values so long as the sum of the operand magnitudes
+/// is a valid magnitude; otherwise, overflow would occur.
+impl<M: UnpackedMagnitude, N: UnpackedMagnitude, F1: Form, F2: Form> Add<FpUnpacked<N, F2>> for FpUnpacked<M, F1>
+where
+    M: Add<N>,
+    Sum<M, N>: UnpackedMagnitude,
+{
+    type Output = FpUnpacked<Sum<M, N>, Abnormal>;
+
+    #[inline]
+    fn add(self, rhs: FpUnpacked<N, F2>) -> Self::Output {
+        FpUnpacked(self.0 + rhs.0, PhantomData)
+    }
+}
+
 /// Negation is defined for `FpPacked` values of magnitude M so long as `M+1` is
 /// a valid magnitude. This implementation basically subtracts the value from
 /// q*M.
@@ -128,6 +201,48 @@ where
     }
 }
 
+const EIGHT_MODULUS_0: u64 = 0xffffffffaaab;
+const EIGHT_MODULUS_1: u64 = 0xb153ffffb9fe;
+const EIGHT_MODULUS_2: u64 = 0xf6241eabfffe;
+const EIGHT_MODULUS_3: u64 = 0x6730d2a0f6b0;
+const EIGHT_MODULUS_4: u64 = 0x4b84f38512bf;
+const EIGHT_MODULUS_5: u64 = 0x434bacd76477;
+const EIGHT_MODULUS_6: u64 = 0xe69a4b1ba7b6;
+const EIGHT_MODULUS_7: u64 = 0x1a0111ea397f;
+
+/// TODO: document
+impl<M: UnpackedMagnitude, F: Form> Neg for FpUnpacked<M, F>
+where
+    M: Mul<typenum::U4>,
+    Prod<M, typenum::U4>: UnpackedMagnitude,
+{
+    type Output = FpUnpacked<Prod<M, typenum::U4>, Abnormal>;
+
+    #[inline(always)]
+    fn neg(self) -> Self::Output {
+        // We multiply the modulus by 4 to ensure each digit
+        // is larger than the limb size, and then multiply it
+        // by the magnitude of the element to ensure it is
+        // a larger multiple of the modulus than the element
+        // could possibly be.
+
+        FpUnpacked(
+            u64x8::new(
+                EIGHT_MODULUS_0 * 4 * M::U64,
+                EIGHT_MODULUS_1 * 4 * M::U64,
+                EIGHT_MODULUS_2 * 4 * M::U64,
+                EIGHT_MODULUS_3 * 4 * M::U64,
+                EIGHT_MODULUS_4 * 4 * M::U64,
+                EIGHT_MODULUS_5 * 4 * M::U64,
+                EIGHT_MODULUS_6 * 4 * M::U64,
+                EIGHT_MODULUS_7 * 4 * M::U64
+            ) - self.0,
+            PhantomData
+        )
+    }
+}
+
+/// TODO: document
 impl<M: PackedMagnitude, N: PackedMagnitude> Sub<FpPacked<N>> for FpPacked<M>
 where N: Add<typenum::U1>,
       Sum<N, typenum::U1>: PackedMagnitude,
@@ -139,6 +254,96 @@ where N: Add<typenum::U1>,
     #[inline(always)]
     fn sub(self, rhs: FpPacked<N>) -> Self::Output {
         self + (-rhs)
+    }
+}
+
+/// TODO: document
+impl<M: UnpackedMagnitude, N: UnpackedMagnitude, F1: Form, F2: Form> Sub<FpUnpacked<N, F2>> for FpUnpacked<M, F1>
+where
+    N: Mul<typenum::U4>,
+    Prod<N, typenum::U4>: UnpackedMagnitude,
+    M: Add<Prod<N, typenum::U4>>,
+    Sum<M, Prod<N, typenum::U4>>: UnpackedMagnitude,
+{
+    type Output = FpUnpacked<Sum<M, Prod<N, typenum::U4>>, Abnormal>;
+
+    #[inline(always)]
+    fn sub(self, rhs: FpUnpacked<N, F2>) -> Self::Output {
+        self + (-rhs)
+    }
+}
+
+/// Concrete instance of a type that cannot be constructed, used
+/// because `typenum` types cannot be constructed.
+pub struct Num<T>(PhantomData<T>);
+
+impl<T> Num<T> {
+    pub fn new() -> Self {
+        Num(PhantomData)
+    }
+}
+
+impl<M: UnpackedMagnitude, N: UnpackedMagnitude, F: Form> Mul<Num<N>> for FpUnpacked<M, F>
+where
+    M: Mul<N>,
+    Prod<M, N>: UnpackedMagnitude,
+{
+    type Output = FpUnpacked<Prod<M, N>, Abnormal>;
+
+    #[inline(always)]
+    fn mul(self, _: Num<N>) -> Self::Output {
+        FpUnpacked(self.0 * N::U64, PhantomData)
+    }
+}
+
+impl<M: UnpackedMagnitude, F: Form> FpUnpacked<M, F> {
+    /// This performs a reduction of an element of any magnitude into an element
+    /// of magnitude 2.
+    #[inline]
+    pub fn reduce(self) -> FpUnpacked<typenum::U2, Propagated> {
+        let r0 = self.0.extract(0);
+        let r1 = self.0.extract(1);
+        let r2 = self.0.extract(2);
+        let r3 = self.0.extract(3);
+        let r4 = self.0.extract(4);
+        let r5 = self.0.extract(5);
+        let r6 = self.0.extract(6);
+        let r7 = self.0.extract(7);
+
+        // TODO: check is_propagated
+        // Propagate carries
+        let r1 = r1 + (r0 >> 48);
+        let r2 = r2 + (r1 >> 48);
+        let r3 = r3 + (r2 >> 48);
+        let r4 = r4 + (r3 >> 48);
+        let r5 = r5 + (r4 >> 48);
+        let r6 = r6 + (r5 >> 48);
+        let r7 = r7 + (r6 >> 48);
+
+        // Compute how many times we need to subtract the modulus
+        let x = (r7 & 0xffffe00000000000) / EIGHT_MODULUS_7;
+
+        // Subtract the modulus x times
+        let r0 = (r0 | 0xffff000000000000) - (EIGHT_MODULUS_0 * x);
+        let r1 = (r1 | 0xffff000000000000) - (EIGHT_MODULUS_1 * x + ((!r0) >> 48));
+        let r0 = r0 & 0x0000ffffffffffff;
+        let r2 = (r2 | 0xffff000000000000) - (EIGHT_MODULUS_1 * x + ((!r1) >> 48));
+        let r1 = r1 & 0x0000ffffffffffff;
+        let r3 = (r3 | 0xffff000000000000) - (EIGHT_MODULUS_1 * x + ((!r2) >> 48));
+        let r2 = r2 & 0x0000ffffffffffff;
+        let r4 = (r4 | 0xffff000000000000) - (EIGHT_MODULUS_1 * x + ((!r3) >> 48));
+        let r3 = r3 & 0x0000ffffffffffff;
+        let r5 = (r5 | 0xffff000000000000) - (EIGHT_MODULUS_1 * x + ((!r4) >> 48));
+        let r4 = r4 & 0x0000ffffffffffff;
+        let r6 = (r6 | 0xffff000000000000) - (EIGHT_MODULUS_1 * x + ((!r5) >> 48));
+        let r5 = r5 & 0x0000ffffffffffff;
+        let r7 = (r7 | 0xffff000000000000) - (EIGHT_MODULUS_1 * x + ((!r6) >> 48));
+        let r6 = r6 & 0x0000ffffffffffff;
+
+        FpUnpacked(
+            u64x8::new(r0, r1, r2, r3, r4, r5, r6, r7),
+            PhantomData
+        )
     }
 }
 
@@ -525,6 +730,20 @@ impl PackedMagnitude for typenum::U9 {
     const P3: u64 = 0x8831a7ac8fada8ba;
     const P4: u64 = 0xa3f8e5685da91392;
     const P5: u64 = 0xea09a13c057f1b6c;
+}
+
+#[cfg_attr(rustfmt, rustfmt_skip)]
+pub type MaxUnpackedMagnitude = UInt<UInt<UInt<UInt<UInt<UInt<UInt<UInt<UInt<UInt<UInt<UInt<UInt<UInt<UInt<UInt<UTerm,B1>,B1>,B0>,B1>,B0>,B0>,B0>,B0>,B0>,B0>,B0>,B0>,B1>,B0>,B0>,B1>;
+
+#[test]
+fn max_magnitude_is_correct() {
+    assert_eq!(MaxUnpackedMagnitude::U64, 53257);
+}
+
+impl<T: Unsigned> UnpackedMagnitude for T
+where
+    MaxUnpackedMagnitude: Sub<T>,
+{
 }
 
 #[test]

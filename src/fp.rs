@@ -76,6 +76,8 @@ pub trait PackedMagnitude: Unsigned {
     const P3: u64;
     const P4: u64;
     const P5: u64;
+
+    type Unpacked: UnpackedMagnitude;
 }
 
 /// This represents a magnitude that an `FpUnpacked` value is allowed to be.
@@ -122,6 +124,82 @@ impl<M: UnpackedMagnitude, F: Form> Clone for FpUnpacked<M, F> {
     }
 }
 
+#[inline(always)]
+fn split(
+    c0: u64,
+    c1: u64,
+    c2: u64,
+    c3: u64,
+    c4: u64,
+    c5: u64,
+) -> (u64, u64, u64, u64, u64, u64, u64, u64)
+{
+    (
+        c0 & 0xffffffffffff,
+        ((c0 >> 48) | (c1 << 16)) & 0xffffffffffff,
+        ((c1 >> 32) | (c2 << 32)) & 0xffffffffffff,
+        c2 >> 16,
+        c3 & 0xffffffffffff,
+        ((c3 >> 48) | (c4 << 16)) & 0xffffffffffff,
+        ((c4 >> 32) | (c5 << 32)) & 0xffffffffffff,
+        c5 >> 16
+    )
+}
+
+#[inline(always)]
+fn merge(
+    c0: u64,
+    c1: u64,
+    c2: u64,
+    c3: u64,
+    c4: u64,
+    c5: u64,
+    c6: u64,
+    c7: u64
+) -> (u64, u64, u64, u64, u64, u64)
+{
+    (
+        (c0 >>  0) | (c1 << 48),
+        (c1 >> 16) | (c2 << 32),
+        (c2 >> 32) | (c3 << 16),
+        (c4 >>  0) | (c5 << 48),
+        (c5 >> 16) | (c6 << 32),
+        (c6 >> 32) | (c7 << 16),
+    )
+}
+
+impl<M: PackedMagnitude> FpPacked<M> {
+    /// Converts a value in a packed representation to a value in an unpacked
+    /// representation
+    pub fn unpack(self) -> FpUnpacked<M::Unpacked, Propagated> {
+        let (r0, r1, r2, r3, r4, r5, r6, r7) = split(self.0, self.1, self.2, self.3, self.4, self.5);
+
+        FpUnpacked(
+            u64x8::new(r0, r1, r2, r3, r4, r5, r6, r7),
+            PhantomData
+        )
+    }
+}
+
+impl FpUnpacked<typenum::U2, Propagated> {
+    /// Converts a value in an unpacked representation to a value in a packed
+    /// representation
+    pub fn pack(self) -> FpPacked<typenum::U3> {
+        let r0 = self.0.extract(0);
+        let r1 = self.0.extract(1);
+        let r2 = self.0.extract(2);
+        let r3 = self.0.extract(3);
+        let r4 = self.0.extract(4);
+        let r5 = self.0.extract(5);
+        let r6 = self.0.extract(6);
+        let r7 = self.0.extract(7);
+
+        let (r0, r1, r2, r3, r4, r5) = merge(r0, r1, r2, r3, r4, r5, r6, r7);
+
+        FpPacked(r0, r1, r2, r3, r4, r5, PhantomData)
+    }
+}
+
 impl Rand for FpPacked<typenum::U2> {
     fn rand<R: Rng>(rng: &mut R) -> Self {
         let r0 = u64::rand(rng);
@@ -132,6 +210,24 @@ impl Rand for FpPacked<typenum::U2> {
         let r5 = u64::rand(rng) >> 3;
 
         FpPacked(r0, r1, r2, r3, r4, r5, PhantomData)
+    }
+}
+
+impl<M: PackedMagnitude> FpPacked<M>
+{
+    pub fn extend<N: PackedMagnitude>(self) -> FpPacked<N>
+        where N: Sub<M>
+    {
+        FpPacked(self.0, self.1, self.2, self.3, self.4, self.5, PhantomData)
+    }
+}
+
+impl<M: UnpackedMagnitude, F: Form> FpUnpacked<M, F>
+{
+    pub fn extend<N: UnpackedMagnitude>(self) -> FpUnpacked<N, F>
+        where N: Sub<M>
+    {
+        FpUnpacked(self.0, PhantomData)
     }
 }
 
@@ -658,6 +754,8 @@ impl PackedMagnitude for typenum::U1 {
     const P3: u64 = 0x64774b84f38512bf;
     const P4: u64 = 0x4b1ba7b6434bacd7;
     const P5: u64 = 0x1a0111ea397fe69a;
+
+    type Unpacked = typenum::U1;
 }
 
 impl PackedMagnitude for typenum::U2 {
@@ -667,6 +765,8 @@ impl PackedMagnitude for typenum::U2 {
     const P3: u64 = 0xc8ee9709e70a257e;
     const P4: u64 = 0x96374f6c869759ae;
     const P5: u64 = 0x340223d472ffcd34;
+
+    type Unpacked = typenum::U2;
 }
 
 impl PackedMagnitude for typenum::U3 {
@@ -676,6 +776,8 @@ impl PackedMagnitude for typenum::U3 {
     const P3: u64 = 0x2d65e28eda8f383e;
     const P4: u64 = 0xe152f722c9e30686;
     const P5: u64 = 0x4e0335beac7fb3ce;
+
+    type Unpacked = typenum::U3;
 }
 
 impl PackedMagnitude for typenum::U4 {
@@ -685,6 +787,8 @@ impl PackedMagnitude for typenum::U4 {
     const P3: u64 = 0x91dd2e13ce144afd;
     const P4: u64 = 0x2c6e9ed90d2eb35d;
     const P5: u64 = 0x680447a8e5ff9a69;
+
+    type Unpacked = typenum::U4;
 }
 
 impl PackedMagnitude for typenum::U5 {
@@ -694,6 +798,8 @@ impl PackedMagnitude for typenum::U5 {
     const P3: u64 = 0xf6547998c1995dbd;
     const P4: u64 = 0x778a468f507a6034;
     const P5: u64 = 0x820559931f7f8103;
+
+    type Unpacked = typenum::U5;
 }
 
 impl PackedMagnitude for typenum::U6 {
@@ -703,6 +809,8 @@ impl PackedMagnitude for typenum::U6 {
     const P3: u64 = 0x5acbc51db51e707c;
     const P4: u64 = 0xc2a5ee4593c60d0c;
     const P5: u64 = 0x9c066b7d58ff679d;
+
+    type Unpacked = typenum::U5;
 }
 
 impl PackedMagnitude for typenum::U7 {
@@ -712,6 +820,8 @@ impl PackedMagnitude for typenum::U7 {
     const P3: u64 = 0xbf4310a2a8a3833b;
     const P4: u64 = 0x0dc195fbd711b9e3;
     const P5: u64 = 0xb6077d67927f4e38;
+
+    type Unpacked = typenum::U6;
 }
 
 impl PackedMagnitude for typenum::U8 {
@@ -721,6 +831,8 @@ impl PackedMagnitude for typenum::U8 {
     const P3: u64 = 0x23ba5c279c2895fb;
     const P4: u64 = 0x58dd3db21a5d66bb;
     const P5: u64 = 0xd0088f51cbff34d2;
+
+    type Unpacked = typenum::U7;
 }
 
 impl PackedMagnitude for typenum::U9 {
@@ -730,6 +842,8 @@ impl PackedMagnitude for typenum::U9 {
     const P3: u64 = 0x8831a7ac8fada8ba;
     const P4: u64 = 0xa3f8e5685da91392;
     const P5: u64 = 0xea09a13c057f1b6c;
+
+    type Unpacked = typenum::U8;
 }
 
 #[cfg_attr(rustfmt, rustfmt_skip)]

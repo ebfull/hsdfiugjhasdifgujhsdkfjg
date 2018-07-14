@@ -438,22 +438,25 @@ impl<M: UnpackedMagnitude, F: Form> FpUnpacked<M, F> {
         // Compute how many times we need to subtract the modulus
         let x = (r7 & 0xffffe00000000000) / EIGHT_MODULUS_7;
 
-        // Subtract the modulus x times
-        let r0 = (r0 | 0xffff000000000000) - (EIGHT_MODULUS_0 * x);
-        let r1 = (r1 | 0xffff000000000000) - (EIGHT_MODULUS_1 * x + ((!r0) >> 48));
-        let r0 = r0 & 0x0000ffffffffffff;
-        let r2 = (r2 | 0xffff000000000000) - (EIGHT_MODULUS_2 * x + ((!r1) >> 48));
-        let r1 = r1 & 0x0000ffffffffffff;
-        let r3 = (r3 | 0xffff000000000000) - (EIGHT_MODULUS_3 * x + ((!r2) >> 48));
-        let r2 = r2 & 0x0000ffffffffffff;
-        let r4 = (r4 | 0xffff000000000000) - (EIGHT_MODULUS_4 * x + ((!r3) >> 48));
-        let r3 = r3 & 0x0000ffffffffffff;
-        let r5 = (r5 | 0xffff000000000000) - (EIGHT_MODULUS_5 * x + ((!r4) >> 48));
-        let r4 = r4 & 0x0000ffffffffffff;
-        let r6 = (r6 | 0xffff000000000000) - (EIGHT_MODULUS_6 * x + ((!r5) >> 48));
-        let r5 = r5 & 0x0000ffffffffffff;
-        let r7 = (r7 | 0xffff000000000000) - (EIGHT_MODULUS_7 * x + ((!r6) >> 48));
-        let r6 = r6 & 0x0000ffffffffffff;
+        #[inline(always)]
+        fn substep(s: u64, m: u64, x: u64, b: &mut u64) -> u64 {
+            let tmp = (s | 0xffff000000000000)
+                    - (m * x + *b);
+
+            *b = (!tmp) >> 48;
+
+            tmp & 0x0000ffffffffffff
+        }
+
+        let mut borrow = 0;
+        let r0 = substep(r0, EIGHT_MODULUS_0, x, &mut borrow);
+        let r1 = substep(r1, EIGHT_MODULUS_1, x, &mut borrow);
+        let r2 = substep(r2, EIGHT_MODULUS_2, x, &mut borrow);
+        let r3 = substep(r3, EIGHT_MODULUS_3, x, &mut borrow);
+        let r4 = substep(r4, EIGHT_MODULUS_4, x, &mut borrow);
+        let r5 = substep(r5, EIGHT_MODULUS_5, x, &mut borrow);
+        let r6 = substep(r6, EIGHT_MODULUS_6, x, &mut borrow);
+        let r7 = substep(r7, EIGHT_MODULUS_7, x, &mut borrow);
 
         FpUnpacked(
             u64x8::new(r0, r1, r2, r3, r4, r5, r6, r7),
@@ -487,12 +490,12 @@ impl<M: PackedMagnitude> FpPacked<M> {
         r
     }
 
-    // TODO: figure out if this is accurate
     #[inline]
     pub fn reduce(self) -> FpPacked<typenum::U2> {
         // Compute how many times we should subtract modulus
         let x = (self.5 & 0xe000000000000000) / SIX_MODULUS_5;
 
+        #[inline(always)]
         fn substep(s: u64, m: u64, x: u64, b: &mut u64) -> u64 {
             let tmp = (u128::from(s) | (u128::from(u64::max_value()) << 64))
                     - (u128::from(m) * u128::from(x) + u128::from(*b));

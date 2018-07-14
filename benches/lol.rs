@@ -18,6 +18,25 @@ use hsdfiugjhasdifgujhsdkfjg::fp::{FpPacked, Num};
 
 use criterion::{Criterion};
 
+struct Fq2 {
+    c0: FpPacked<typenum::U2>,
+    c1: FpPacked<typenum::U2>
+}
+
+impl Fq2 {
+    fn square(self) -> Self {
+        let ab = self.c0 * self.c1;
+        let c0c1 = self.c0 + self.c1;
+        let c0 = (self.c0 - self.c1).reduce() * c0c1;
+        let c1 = ab + ab;
+
+        Fq2 {
+            c0: c0,
+            c1: c1.reduce()
+        }
+    }
+}
+
 struct G1 {
     x: FpPacked<typenum::U2>,
     y: FpPacked<typenum::U2>,
@@ -188,6 +207,30 @@ fn reduce_element(c: &mut Criterion) {
             -------FpPacked::rand(&mut rng)
         }, |x| {
             x.subtract_modulus()
+        });
+    });
+
+    c.bench_function("fq2_square", |b| {
+        let mut rng = OsRng::new().unwrap();
+
+        b.iter_with_setup(move || {
+            Fq2 {
+                c0: FpPacked::rand(&mut rng),
+                c1: FpPacked::rand(&mut rng),
+            }
+        }, |x| {
+            x.square()
+        });
+    });
+
+    c.bench_function("old_fq2_square", |b| {
+        let mut rng = OsRng::new().unwrap();
+
+        b.iter_with_setup(move || {
+            bls12_381::Fq2::rand(&mut rng)
+        }, |mut x| {
+            x.square();
+            x
         });
     });
 

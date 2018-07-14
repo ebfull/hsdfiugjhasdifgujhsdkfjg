@@ -11,6 +11,10 @@ harness = false
 [dependencies]
 rand = "*"
 
+[dependencies.subtle]
+version = "0.7"
+features = ["nightly"]
+
 [dev-dependencies.pairing]
 version = "0.14"
 features = ["u128-support"]

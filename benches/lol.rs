@@ -15,19 +15,18 @@ use criterion::{Criterion};
 
 fn reduce_element(c: &mut Criterion) {
     use pairing::bls12_381;
-
     
-    c.bench_function("reduce_propagated", |b| {
-        let mut rng = OsRng::new().unwrap();
+    // c.bench_function("reduce_propagated", |b| {
+    //     let mut rng = OsRng::new().unwrap();
 
-        b.iter_with_setup(move || {
-            let x = Fq::rand(&mut rng);
+    //     b.iter_with_setup(move || {
+    //         let x = Fq::rand(&mut rng);
 
-            x
-        }, |x| {
-            x.reduce()
-        });
-    });
+    //         x
+    //     }, |x| {
+    //         x.reduce()
+    //     });
+    // });
 
     c.bench_function("reduce_not_propagated", |b| {
         let mut rng = OsRng::new().unwrap();
@@ -39,6 +38,19 @@ fn reduce_element(c: &mut Criterion) {
             x + y
         }, |x| {
             x.reduce()
+        });
+    });
+
+    c.bench_function("old_fq_neg", |b| {
+        let mut rng = OsRng::new().unwrap();
+
+        b.iter_with_setup(move || {
+            let x = bls12_381::Fq::rand(&mut rng);
+
+            x
+        }, |mut x| {
+            x.negate();
+            x
         });
     });
 
@@ -167,6 +179,38 @@ fn reduce_element(c: &mut Criterion) {
             a0.mul_assign(&a8);
             a0.mul_assign(&a9);
             a0.mul_assign(&a10);
+        });
+    });
+
+    c.bench_function("old_fq_add_ten", |b| {
+        let mut rng = OsRng::new().unwrap();
+
+        b.iter_with_setup(move || {
+            let a0 = bls12_381::Fq::rand(&mut rng);
+            let a1 = bls12_381::Fq::rand(&mut rng);
+            let a2 = bls12_381::Fq::rand(&mut rng);
+            let a3 = bls12_381::Fq::rand(&mut rng);
+            let a4 = bls12_381::Fq::rand(&mut rng);
+            let a5 = bls12_381::Fq::rand(&mut rng);
+            let a6 = bls12_381::Fq::rand(&mut rng);
+            let a7 = bls12_381::Fq::rand(&mut rng);
+            let a8 = bls12_381::Fq::rand(&mut rng);
+            let a9 = bls12_381::Fq::rand(&mut rng);
+            let a10 = bls12_381::Fq::rand(&mut rng);
+            
+            (a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10)
+        }, |(mut a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10)| {
+            a0.add_assign(&a1);
+            a0.add_assign(&a2);
+            a0.add_assign(&a3);
+            a0.add_assign(&a4);
+            a0.add_assign(&a5);
+
+            a0.add_assign(&a6);
+            a0.add_assign(&a7);
+            a0.add_assign(&a8);
+            a0.add_assign(&a9);
+            a0.add_assign(&a10);
         });
     });
 }

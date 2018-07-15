@@ -6,7 +6,7 @@ use typenum::{
 };
 use subtle::{Choice};
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct Fp2<M: PackedMagnitude> {
     pub c0: FpPacked<M>,
     pub c1: FpPacked<M>,
@@ -114,8 +114,8 @@ impl Fp2<typenum::U2> {
         // Adjusted to account for BLS12-381 nonresidue (-1)
 
         Fp2 {
-            c0: (self.c0 + self.c1) * (self.c0 - self.c1).reduce(),
-            c1: (self.c0 + self.c0) * self.c1
+            c0: (self.c0.clone() + self.c1.clone()) * (self.c0.clone() - self.c1.clone()).reduce(),
+            c1: (self.c0.clone() + self.c0.clone()) * self.c1.clone()
         }
     }
 }
@@ -129,12 +129,12 @@ impl Mul for Fp2<typenum::U2> {
         // Section 3 (Karatsuba)
         // Adjusted to account for BLS12-381 nonresidue (-1)
 
-        let aa = self.c0 * other.c0;
-        let bb = -(self.c1 * other.c1);
+        let aa = self.c0.clone() * other.c0.clone();
+        let bb = -(self.c1.clone() * other.c1.clone());
 
         Fp2 {
-            c0: (aa + bb).reduce(),
-            c1: ((self.c0 + self.c1).reduce() * (other.c0 + other.c1) - aa + bb).reduce()
+            c0: (aa.clone() + bb.clone()).reduce(),
+            c1: ((self.c0.clone() + self.c1.clone()).reduce() * (other.c0.clone() + other.c1.clone()) - aa + bb).reduce()
         }
     }
 }
@@ -148,6 +148,6 @@ fn test_squaring_consistency() {
     for _ in 0..10000 {
         let a = Fp2::rand(rng);
 
-        assert!(a.square().full_reduce() == (a * a).full_reduce());
+        assert!(a.clone().square().full_reduce() == (a.clone() * a.clone()).full_reduce());
     }
 }

@@ -14,6 +14,22 @@ extern crate hsdfiugjhasdifgujhsdkfjg;
 use hsdfiugjhasdifgujhsdkfjg::fp::{FpPacked, Num};
 use hsdfiugjhasdifgujhsdkfjg::fp2::Fp2;
 
+#[bench]
+fn fp2_mul_old(b: &mut Bencher) {
+    use pairing::bls12_381;
+    use pairing::Field;
+
+    let rng = &mut thread_rng();
+
+    let x = bls12_381::Fq2::rand(rng);
+    let y = bls12_381::Fq2::rand(rng);
+
+    b.iter(|| {
+        let mut x = x;
+        x.mul_assign(&y);
+        x
+    });
+}
 
 #[bench]
 fn fp2_mul(b: &mut Bencher) {
@@ -24,6 +40,22 @@ fn fp2_mul(b: &mut Bencher) {
 
     b.iter(|| {
         x * y
+    });
+}
+
+#[bench]
+fn fp2_square_old(b: &mut Bencher) {
+    use pairing::bls12_381;
+    use pairing::Field;
+
+    let rng = &mut thread_rng();
+
+    let x = bls12_381::Fq2::rand(rng);
+
+    b.iter(|| {
+        let mut x = x;
+        x.square();
+        x
     });
 }
 
@@ -99,6 +131,22 @@ fn fp_packed_mul(b: &mut Bencher) {
 }
 
 #[bench]
+fn fp_packed_mul_old(b: &mut Bencher) {
+    use pairing::bls12_381;
+    use pairing::Field;
+
+    let rng = &mut thread_rng();
+
+    let mut x = bls12_381::Fq::rand(rng);
+    let y = bls12_381::Fq::rand(rng);
+
+    b.iter(move || {
+        x.mul_assign(&y);
+        x
+    });
+}
+
+#[bench]
 fn fp_packed_square(b: &mut Bencher) {
     let rng = &mut thread_rng();
 
@@ -106,6 +154,21 @@ fn fp_packed_square(b: &mut Bencher) {
 
     b.iter(|| {
         x.square()
+    });
+}
+
+#[bench]
+fn fp_packed_square_old(b: &mut Bencher) {
+    use pairing::bls12_381;
+    use pairing::Field;
+
+    let rng = &mut thread_rng();
+
+    let mut x = bls12_381::Fq::rand(rng);
+
+    b.iter(move || {
+        x.square();
+        x
     });
 }
 

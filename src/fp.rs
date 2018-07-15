@@ -94,7 +94,6 @@ pub struct FpPacked<M: PackedMagnitude>(u64, u64, u64, u64, u64, u64, PhantomDat
 pub struct FpUnpacked<M: UnpackedMagnitude, F: Form>(u64x8, PhantomData<(M, F)>);
 
 impl<M: PackedMagnitude> ConditionallySelectable for FpPacked<M> {
-    #[inline(always)]
     fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
         FpPacked(
             u64::conditional_select(&a.0, &b.0, choice),
@@ -271,7 +270,6 @@ where
 {
     type Output = FpPacked<Sum<M, N>>;
 
-    #[inline(always)]
     fn add(self, rhs: FpPacked<N>) -> Self::Output {
         let mut carry = 0;
         let r0 = adc(self.0, rhs.0, &mut carry);
@@ -297,7 +295,6 @@ where
 {
     type Output = FpUnpacked<Sum<M, N>, Abnormal>;
 
-    #[inline(always)]
     fn add(self, rhs: FpUnpacked<N, F2>) -> Self::Output {
         FpUnpacked(self.0 + rhs.0, PhantomData)
     }
@@ -313,7 +310,6 @@ where
 {
     type Output = FpPacked<Sum<M, typenum::U1>>;
 
-    #[inline(always)]
     fn neg(self) -> Self::Output {
         let mut borrow = 0;
         let r0 = sbb(M::P0, self.0, &mut borrow);
@@ -346,7 +342,6 @@ where
 {
     type Output = FpUnpacked<Prod<M, typenum::U4>, Abnormal>;
 
-    #[inline(always)]
     fn neg(self) -> Self::Output {
         // We multiply the modulus by 4 to ensure each digit
         // is larger than the limb size, and then multiply it
@@ -380,7 +375,6 @@ where
 {
     type Output = FpPacked<Sum<M, Sum<N, typenum::U1>>>;
 
-    #[inline(always)]
     fn sub(self, rhs: FpPacked<N>) -> Self::Output {
         self + (-rhs)
     }
@@ -397,7 +391,6 @@ where
 {
     type Output = FpUnpacked<Sum<M, Prod<N, typenum::U4>>, Abnormal>;
 
-    #[inline(always)]
     fn sub(self, rhs: FpUnpacked<N, F2>) -> Self::Output {
         self + (-rhs)
     }
@@ -408,7 +401,6 @@ where
 pub struct Num<T>(PhantomData<T>);
 
 impl<T> Num<T> {
-    #[inline(always)]
     pub fn new() -> Self {
         Num(PhantomData)
     }
@@ -421,7 +413,6 @@ where
 {
     type Output = FpUnpacked<Prod<M, N>, Abnormal>;
 
-    #[inline(always)]
     fn mul(self, _: Num<N>) -> Self::Output {
         FpUnpacked(self.0 * N::U64, PhantomData)
     }
@@ -430,7 +421,6 @@ where
 impl<M: UnpackedMagnitude, F: Form> FpUnpacked<M, F> {
     /// This performs a reduction of an element of any magnitude into an element
     /// of magnitude 2.
-    #[inline(always)]
     pub fn reduce(self) -> FpUnpacked<typenum::U2, Propagated> {
         let r0 = self.0.extract(0);
         let r1 = self.0.extract(1);
@@ -481,7 +471,6 @@ impl<M: PackedMagnitude> FpPacked<M> {
     /// This subtracts the modulus p unless the result is negative, producing
     /// a value of one less magnitude. It's impossible (and unnecessary)
     /// to do this to a value of magnitude 1.
-    #[inline(always)]
     pub fn full_reduce(self) -> FpPacked<Diff<M, typenum::U1>>
     where
         M: Sub<typenum::U1>,
@@ -504,7 +493,6 @@ impl<M: PackedMagnitude> FpPacked<M> {
         r
     }
 
-    #[inline(always)]
     pub fn reduce(self) -> FpPacked<typenum::U2> {
         if M::U64 <= 2 {
             // We're already reduced
@@ -548,7 +536,6 @@ where
 {
     type Output = FpPacked<typenum::U2>;
 
-    #[inline(always)]
     fn mul(self, other: FpPacked<N>) -> Self::Output {
         let mut carry = 0;
         let r0 = mac_with_carry(0, self.0, other.0, &mut carry);
@@ -608,7 +595,6 @@ where
 impl<M: PackedMagnitude> FpPacked<M> {
     /// Squaring is defined for `FpPacked` under the same conditions as
     /// self-multiplication.
-    #[inline(always)]
     pub fn square(self) -> FpPacked<typenum::U2>
     where
         M: Mul<M>,

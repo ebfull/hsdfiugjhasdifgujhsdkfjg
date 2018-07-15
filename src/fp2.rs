@@ -29,7 +29,6 @@ where
 {
     type Output = Fp2<Sum<M, N>>;
 
-    #[inline(always)]
     fn add(self, rhs: Fp2<N>) -> Self::Output {
         Fp2 {
             c0: self.c0 + rhs.c0,
@@ -45,7 +44,6 @@ where
 {
     type Output = Fp2<Sum<M, typenum::U1>>;
 
-    #[inline(always)]
     fn neg(self) -> Self::Output {
         Fp2 {
             c0: -self.c0,
@@ -63,14 +61,12 @@ where
 {
     type Output = Fp2<Sum<M, Sum<N, typenum::U1>>>;
 
-    #[inline(always)]
     fn sub(self, rhs: Fp2<N>) -> Self::Output {
         self + (-rhs)
     }
 }
 
 impl<M: PackedMagnitude> Fp2<M> {
-    #[inline(always)]
     pub fn reduce(self) -> Fp2<typenum::U2> {
         Fp2 {
             c0: self.c0.reduce(),
@@ -78,7 +74,6 @@ impl<M: PackedMagnitude> Fp2<M> {
         }
     }
 
-    #[inline(always)]
     pub fn extend<N: PackedMagnitude + Sub<M>>(self) -> Fp2<N> {
         Fp2 {
             c0: self.c0.extend(),
@@ -88,7 +83,6 @@ impl<M: PackedMagnitude> Fp2<M> {
 }
 
 impl Fp2<typenum::U2> {
-    #[inline(always)]
     pub fn full_reduce(self) -> Fp2<typenum::U1> {
         Fp2 {
             c0: self.c0.full_reduce(),
@@ -98,7 +92,6 @@ impl Fp2<typenum::U2> {
 }
 
 impl Fp2<typenum::U1> {
-    #[inline(always)]
     pub fn is_equal(&self, other: &Self) -> Choice {
         self.c0.is_equal(&other.c0) &
         self.c1.is_equal(&other.c1)
@@ -106,7 +99,6 @@ impl Fp2<typenum::U1> {
 }
 
 impl PartialEq for Fp2<typenum::U1> {
-    #[inline(always)]
     fn eq(&self, other: &Fp2<typenum::U1>) -> bool {
         self.is_equal(other).unwrap_u8() == 1
     }
@@ -115,20 +107,15 @@ impl PartialEq for Fp2<typenum::U1> {
 impl Eq for Fp2<typenum::U1> { }
 
 impl Fp2<typenum::U2> {
-    #[inline(always)]
     pub fn square(self) -> Fp2<typenum::U2> {
         // Devegili OhEig Scott Dahab
         // Multiplication and Squaring on Pairing-Friendly Fields.pdf
         // Section 3 (Complex squaring)
         // Adjusted to account for BLS12-381 nonresidue (-1)
 
-        let c0c1 = self.c0 + self.c1;
-        let c0 = (self.c0 - self.c1).reduce() * c0c1;
-        let c1 = (self.c0 + self.c0) * self.c1;
-
         Fp2 {
-            c0: c0,
-            c1: c1,
+            c0: (self.c0 + self.c1) * (self.c0 - self.c1).reduce(),
+            c1: (self.c0 + self.c0) * self.c1
         }
     }
 }
@@ -136,7 +123,6 @@ impl Fp2<typenum::U2> {
 impl Mul for Fp2<typenum::U2> {
     type Output = Fp2<typenum::U2>;
 
-    #[inline(always)]
     fn mul(self, other: Fp2<typenum::U2>) -> Self::Output {
         // Devegili OhEig Scott Dahab
         // Multiplication and Squaring on Pairing-Friendly Fields.pdf
@@ -144,11 +130,11 @@ impl Mul for Fp2<typenum::U2> {
         // Adjusted to account for BLS12-381 nonresidue (-1)
 
         let aa = self.c0 * other.c0;
-        let bb = self.c1 * other.c1;
+        let bb = -(self.c1 * other.c1);
 
         Fp2 {
-            c0: (aa - bb).reduce(),
-            c1: ((self.c0 + self.c1).reduce() * (other.c0 + other.c1) - aa - bb).reduce()
+            c0: (aa + bb).reduce(),
+            c1: ((self.c0 + self.c1).reduce() * (other.c0 + other.c1) - aa + bb).reduce()
         }
     }
 }

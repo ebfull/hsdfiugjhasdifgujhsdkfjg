@@ -1,12 +1,12 @@
 #![feature(test)]
 
-extern crate rand;
 extern crate pairing;
+extern crate rand;
 extern crate subtle;
-extern crate typenum;
 extern crate test;
+extern crate typenum;
 
-use test::{Bencher};
+use test::Bencher;
 
 use rand::{thread_rng, Rand};
 
@@ -38,9 +38,7 @@ fn fp2_mul(b: &mut Bencher) {
     let x = Fp2::rand(rng);
     let y = Fp2::rand(rng);
 
-    b.iter(move || {
-        x.clone() * y.clone()
-    });
+    b.iter(move || x.clone() * y.clone());
 }
 
 #[bench]
@@ -65,9 +63,7 @@ fn fp2_square(b: &mut Bencher) {
 
     let x = Fp2::rand(rng);
 
-    b.iter(move || {
-        x.clone().square()
-    });
+    b.iter(move || x.clone().square());
 }
 
 #[bench]
@@ -77,9 +73,7 @@ fn fp2_add(b: &mut Bencher) {
     let x = Fp2::rand(rng);
     let y = Fp2::rand(rng);
 
-    b.iter(move || {
-        x.clone() + y.clone()
-    });
+    b.iter(move || x.clone() + y.clone());
 }
 
 #[bench]
@@ -89,9 +83,7 @@ fn fp2_sub(b: &mut Bencher) {
     let x = Fp2::rand(rng);
     let y = Fp2::rand(rng);
 
-    b.iter(move || {
-        x.clone() + y.clone()
-    });
+    b.iter(move || x.clone() + y.clone());
 }
 
 #[bench]
@@ -100,9 +92,7 @@ fn fp2_neg(b: &mut Bencher) {
 
     let x = Fp2::rand(rng);
 
-    b.iter(move || {
-        -(x.clone())
-    });
+    b.iter(move || -(x.clone()));
 }
 
 #[bench]
@@ -111,12 +101,8 @@ fn fp2_reduce(b: &mut Bencher) {
 
     let x = Fp2::rand(rng) + Fp2::rand(rng);
 
-    b.iter(move || {
-        x.clone().reduce()
-    });
+    b.iter(move || x.clone().reduce());
 }
-
-
 
 #[bench]
 fn fp_packed_mul(b: &mut Bencher) {
@@ -125,9 +111,7 @@ fn fp_packed_mul(b: &mut Bencher) {
     let x = -FpPacked::rand(rng);
     let y = -FpPacked::rand(rng);
 
-    b.iter(move || {
-        x.clone() * y.clone()
-    });
+    b.iter(move || x.clone() * y.clone());
 }
 
 #[bench]
@@ -152,9 +136,7 @@ fn fp_packed_square(b: &mut Bencher) {
 
     let x = -FpPacked::rand(rng);
 
-    b.iter(move || {
-        x.clone().square()
-    });
+    b.iter(move || x.clone().square());
 }
 
 #[bench]
@@ -179,9 +161,7 @@ fn fp_packed_add(b: &mut Bencher) {
     let x = -FpPacked::rand(rng);
     let y = -FpPacked::rand(rng);
 
-    b.iter(move || {
-        x.clone() + y.clone()
-    });
+    b.iter(move || x.clone() + y.clone());
 }
 
 #[bench]
@@ -191,9 +171,7 @@ fn fp_packed_sub(b: &mut Bencher) {
     let x = -FpPacked::rand(rng);
     let y = -FpPacked::rand(rng);
 
-    b.iter(move || {
-        x.clone() + y.clone()
-    });
+    b.iter(move || x.clone() + y.clone());
 }
 
 #[bench]
@@ -202,9 +180,7 @@ fn fp_packed_neg(b: &mut Bencher) {
 
     let x = -FpPacked::rand(rng);
 
-    b.iter(move || {
-        -(x.clone())
-    });
+    b.iter(move || -(x.clone()));
 }
 
 #[bench]
@@ -213,9 +189,7 @@ fn fp_packed_reduce(b: &mut Bencher) {
 
     let x = -----FpPacked::rand(rng);
 
-    b.iter(move || {
-        x.clone().reduce()
-    });
+    b.iter(move || x.clone().reduce());
 }
 
 #[bench]
@@ -224,9 +198,7 @@ fn fp_unpacked_scale(b: &mut Bencher) {
 
     let x = (------FpPacked::rand(rng)).unpack();
 
-    b.iter(move || {
-        x.clone() * Num::<typenum::U200>::new()
-    });
+    b.iter(move || x.clone() * Num::<typenum::U200>::new());
 }
 
 #[bench]
@@ -236,9 +208,7 @@ fn fp_unpacked_add(b: &mut Bencher) {
     let x = (------FpPacked::rand(rng)).unpack();
     let y = (------FpPacked::rand(rng)).unpack();
 
-    b.iter(move || {
-        x.clone() + y.clone()
-    });
+    b.iter(move || x.clone() + y.clone());
 }
 
 #[bench]
@@ -248,9 +218,7 @@ fn fp_unpacked_sub(b: &mut Bencher) {
     let x = (------FpPacked::rand(rng)).unpack();
     let y = (------FpPacked::rand(rng)).unpack();
 
-    b.iter(move || {
-        x.clone() + y.clone()
-    });
+    b.iter(move || x.clone() + y.clone());
 }
 
 #[bench]
@@ -259,9 +227,7 @@ fn fp_unpacked_neg(b: &mut Bencher) {
 
     let x = (------FpPacked::rand(rng)).unpack();
 
-    b.iter(move || {
-        -(x.clone())
-    });
+    b.iter(move || -(x.clone()));
 }
 
 #[bench]
@@ -270,9 +236,7 @@ fn fp_unpacked_reduce(b: &mut Bencher) {
 
     let x = (------FpPacked::rand(rng)).unpack();
 
-    b.iter(move || {
-        x.clone().reduce()
-    });
+    b.iter(move || x.clone().reduce());
 }
 
 #[bench]
@@ -281,9 +245,7 @@ fn fp_pack(b: &mut Bencher) {
 
     let x = (------FpPacked::rand(rng)).unpack();
 
-    b.iter(move || {
-        x.clone().pack()
-    });
+    b.iter(move || x.clone().pack());
 }
 
 #[bench]
@@ -292,7 +254,5 @@ fn fp_unpack(b: &mut Bencher) {
 
     let x = ------FpPacked::rand(rng);
 
-    b.iter(move || {
-        x.clone().unpack()
-    });
+    b.iter(move || x.clone().unpack());
 }

@@ -115,21 +115,12 @@ fn split(c: [u64; 6]) -> (u64, u64, u64, u64, u64, u64, u64, u64) {
 }
 
 #[inline(always)]
-fn merge(
-    c0: u64,
-    c1: u64,
-    c2: u64,
-    c3: u64,
-    c4: u64,
-    c5: u64,
-    c6: u64,
-    c7: u64,
-) -> [u64; 6] {
+fn merge(c0: u64, c1: u64, c2: u64, c3: u64, c4: u64, c5: u64, c6: u64, c7: u64) -> [u64; 6] {
     [
-        (c0 >>  0) | (c1 << 48),
+        (c0 >> 0) | (c1 << 48),
         (c1 >> 16) | (c2 << 32),
         (c2 >> 32) | (c3 << 16),
-        (c4 >>  0) | (c5 << 48),
+        (c4 >> 0) | (c5 << 48),
         (c5 >> 16) | (c6 << 32),
         (c6 >> 32) | (c7 << 16),
     ]
@@ -202,12 +193,14 @@ impl FpPacked<typenum::U1> {
 
     pub fn one() -> Self {
         FpPacked(
-            [0x760900000002fffd,
-            0xebf4000bc40c0002,
-            0x5f48985753c758ba,
-            0x77ce585370525745,
-            0x5c071a97a256ec6d,
-            0x15f65ec3fa80e493,],
+            [
+                0x760900000002fffd,
+                0xebf4000bc40c0002,
+                0x5f48985753c758ba,
+                0x77ce585370525745,
+                0x5c071a97a256ec6d,
+                0x15f65ec3fa80e493,
+            ],
             PhantomData,
         )
     }
@@ -227,7 +220,7 @@ impl PartialEq for FpPacked<typenum::U1> {
     }
 }
 
-impl Eq for FpPacked<typenum::U1> { }
+impl Eq for FpPacked<typenum::U1> {}
 
 impl<M: UnpackedMagnitude, F: Form> FpUnpacked<M, F> {
     pub fn extend<N: UnpackedMagnitude>(self) -> FpUnpacked<N, F>
@@ -784,108 +777,126 @@ impl Packable for typenum::U7 {
 }
 
 impl PackedMagnitude for typenum::U1 {
-    const P: [u64; 6] = [0xb9feffffffffaaab,
-    0x1eabfffeb153ffff,
-    0x6730d2a0f6b0f624,
-    0x64774b84f38512bf,
-    0x4b1ba7b6434bacd7,
-    0x1a0111ea397fe69a];
+    const P: [u64; 6] = [
+        0xb9feffffffffaaab,
+        0x1eabfffeb153ffff,
+        0x6730d2a0f6b0f624,
+        0x64774b84f38512bf,
+        0x4b1ba7b6434bacd7,
+        0x1a0111ea397fe69a,
+    ];
 
     type Unpacked = typenum::U1;
     type UnpackedForm = Normalized;
 }
 
 impl PackedMagnitude for typenum::U2 {
-    const P: [u64; 6] = [0x73fdffffffff5556,
-    0x3d57fffd62a7ffff,
-    0xce61a541ed61ec48,
-    0xc8ee9709e70a257e,
-    0x96374f6c869759ae,
-    0x340223d472ffcd34];
+    const P: [u64; 6] = [
+        0x73fdffffffff5556,
+        0x3d57fffd62a7ffff,
+        0xce61a541ed61ec48,
+        0xc8ee9709e70a257e,
+        0x96374f6c869759ae,
+        0x340223d472ffcd34,
+    ];
 
     type Unpacked = typenum::U2;
     type UnpackedForm = Propagated;
 }
 
 impl PackedMagnitude for typenum::U3 {
-    const P: [u64; 6] = [0x2dfcffffffff0001,
-    0x5c03fffc13fbffff,
-    0x359277e2e412e26c,
-    0x2d65e28eda8f383e,
-    0xe152f722c9e30686,
-    0x4e0335beac7fb3ce];
+    const P: [u64; 6] = [
+        0x2dfcffffffff0001,
+        0x5c03fffc13fbffff,
+        0x359277e2e412e26c,
+        0x2d65e28eda8f383e,
+        0xe152f722c9e30686,
+        0x4e0335beac7fb3ce,
+    ];
 
     type Unpacked = typenum::U3;
     type UnpackedForm = Propagated;
 }
 
 impl PackedMagnitude for typenum::U4 {
-    const P: [u64; 6] = [0xe7fbfffffffeaaac,
-    0x7aaffffac54ffffe,
-    0x9cc34a83dac3d890,
-    0x91dd2e13ce144afd,
-    0x2c6e9ed90d2eb35d,
-    0x680447a8e5ff9a69];
+    const P: [u64; 6] = [
+        0xe7fbfffffffeaaac,
+        0x7aaffffac54ffffe,
+        0x9cc34a83dac3d890,
+        0x91dd2e13ce144afd,
+        0x2c6e9ed90d2eb35d,
+        0x680447a8e5ff9a69,
+    ];
 
     type Unpacked = typenum::U4;
     type UnpackedForm = Propagated;
 }
 
 impl PackedMagnitude for typenum::U5 {
-    const P: [u64; 6] = [0xa1fafffffffe5557,
-    0x995bfff976a3fffe,
-    0x03f41d24d174ceb4,
-    0xf6547998c1995dbd,
-    0x778a468f507a6034,
-    0x820559931f7f8103];
+    const P: [u64; 6] = [
+        0xa1fafffffffe5557,
+        0x995bfff976a3fffe,
+        0x03f41d24d174ceb4,
+        0xf6547998c1995dbd,
+        0x778a468f507a6034,
+        0x820559931f7f8103,
+    ];
 
     type Unpacked = typenum::U5;
     type UnpackedForm = Propagated;
 }
 
 impl PackedMagnitude for typenum::U6 {
-    const P: [u64; 6] = [0x5bf9fffffffe0002,
-    0xb807fff827f7fffe,
-    0x6b24efc5c825c4d8,
-    0x5acbc51db51e707c,
-    0xc2a5ee4593c60d0c,
-    0x9c066b7d58ff679d];
+    const P: [u64; 6] = [
+        0x5bf9fffffffe0002,
+        0xb807fff827f7fffe,
+        0x6b24efc5c825c4d8,
+        0x5acbc51db51e707c,
+        0xc2a5ee4593c60d0c,
+        0x9c066b7d58ff679d,
+    ];
 
     type Unpacked = typenum::U5;
     type UnpackedForm = Propagated;
 }
 
 impl PackedMagnitude for typenum::U7 {
-    const P: [u64; 6] = [0x15f8fffffffdaaad,
-    0xd6b3fff6d94bfffe,
-    0xd255c266bed6bafc,
-    0xbf4310a2a8a3833b,
-    0x0dc195fbd711b9e3,
-    0xb6077d67927f4e38];
+    const P: [u64; 6] = [
+        0x15f8fffffffdaaad,
+        0xd6b3fff6d94bfffe,
+        0xd255c266bed6bafc,
+        0xbf4310a2a8a3833b,
+        0x0dc195fbd711b9e3,
+        0xb6077d67927f4e38,
+    ];
 
     type Unpacked = typenum::U6;
     type UnpackedForm = Propagated;
 }
 
 impl PackedMagnitude for typenum::U8 {
-    const P: [u64; 6] = [0xcff7fffffffd5558,
-    0xf55ffff58a9ffffd,
-    0x39869507b587b120,
-    0x23ba5c279c2895fb,
-    0x58dd3db21a5d66bb,
-    0xd0088f51cbff34d2];
+    const P: [u64; 6] = [
+        0xcff7fffffffd5558,
+        0xf55ffff58a9ffffd,
+        0x39869507b587b120,
+        0x23ba5c279c2895fb,
+        0x58dd3db21a5d66bb,
+        0xd0088f51cbff34d2,
+    ];
 
     type Unpacked = typenum::U7;
     type UnpackedForm = Propagated;
 }
 
 impl PackedMagnitude for typenum::U9 {
-    const P: [u64; 6] = [0x89f6fffffffd0003,
-    0x140bfff43bf3fffd,
-    0xa0b767a8ac38a745,
-    0x8831a7ac8fada8ba,
-    0xa3f8e5685da91392,
-    0xea09a13c057f1b6c];
+    const P: [u64; 6] = [
+        0x89f6fffffffd0003,
+        0x140bfff43bf3fffd,
+        0xa0b767a8ac38a745,
+        0x8831a7ac8fada8ba,
+        0xa3f8e5685da91392,
+        0xea09a13c057f1b6c,
+    ];
 
     type Unpacked = typenum::U8;
     type UnpackedForm = Propagated;

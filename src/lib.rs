@@ -3,7 +3,6 @@
 //! This is an implementation of the BLS12-381 pairing-friendly elliptic
 //! curve construction.
 #![feature(const_fn, const_let, const_str_as_bytes, const_slice_len)]
-
 #![feature(stdsimd)]
 // In test mode, we'll enable the standard library, but not
 // otherwise.

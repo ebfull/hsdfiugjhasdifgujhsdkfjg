@@ -1,10 +1,8 @@
+use core::ops::{Add, Mul, Neg, Sub};
 use fp::{FpPacked, PackedMagnitude};
 use rand::{Rand, Rng};
-use core::ops::{Add, Mul, Neg, Sub};
-use typenum::{
-    self, operator_aliases::{Sum},
-};
-use subtle::{Choice};
+use subtle::Choice;
+use typenum::{self, operator_aliases::Sum};
 
 #[derive(Clone)]
 pub struct Fp2<M: PackedMagnitude> {
@@ -21,8 +19,7 @@ impl Rand for Fp2<typenum::U2> {
     }
 }
 
-impl<M: PackedMagnitude, N: PackedMagnitude> Add<Fp2<N>>
-    for Fp2<M>
+impl<M: PackedMagnitude, N: PackedMagnitude> Add<Fp2<N>> for Fp2<M>
 where
     M: Add<N>,
     Sum<M, N>: PackedMagnitude,
@@ -70,14 +67,14 @@ impl<M: PackedMagnitude> Fp2<M> {
     pub fn reduce(self) -> Fp2<typenum::U2> {
         Fp2 {
             c0: self.c0.reduce(),
-            c1: self.c1.reduce()
+            c1: self.c1.reduce(),
         }
     }
 
     pub fn extend<N: PackedMagnitude + Sub<M>>(self) -> Fp2<N> {
         Fp2 {
             c0: self.c0.extend(),
-            c1: self.c1.extend()
+            c1: self.c1.extend(),
         }
     }
 }
@@ -86,15 +83,14 @@ impl Fp2<typenum::U2> {
     pub fn full_reduce(self) -> Fp2<typenum::U1> {
         Fp2 {
             c0: self.c0.full_reduce(),
-            c1: self.c1.full_reduce()
+            c1: self.c1.full_reduce(),
         }
     }
 }
 
 impl Fp2<typenum::U1> {
     pub fn is_equal(&self, other: &Self) -> Choice {
-        self.c0.is_equal(&other.c0) &
-        self.c1.is_equal(&other.c1)
+        self.c0.is_equal(&other.c0) & self.c1.is_equal(&other.c1)
     }
 }
 
@@ -104,7 +100,7 @@ impl PartialEq for Fp2<typenum::U1> {
     }
 }
 
-impl Eq for Fp2<typenum::U1> { }
+impl Eq for Fp2<typenum::U1> {}
 
 impl Fp2<typenum::U2> {
     pub fn square(self) -> Fp2<typenum::U2> {
@@ -115,7 +111,7 @@ impl Fp2<typenum::U2> {
 
         Fp2 {
             c0: (self.c0.clone() + self.c1.clone()) * (self.c0.clone() - self.c1.clone()).reduce(),
-            c1: (self.c0.clone() + self.c0.clone()) * self.c1.clone()
+            c1: (self.c0.clone() + self.c0.clone()) * self.c1.clone(),
         }
     }
 }
@@ -134,7 +130,9 @@ impl Mul for Fp2<typenum::U2> {
 
         Fp2 {
             c0: (aa.clone() + bb.clone()).reduce(),
-            c1: ((self.c0.clone() + self.c1.clone()).reduce() * (other.c0.clone() + other.c1.clone()) - aa + bb).reduce()
+            c1: ((self.c0.clone() + self.c1.clone()).reduce()
+                * (other.c0.clone() + other.c1.clone()) - aa + bb)
+                .reduce(),
         }
     }
 }

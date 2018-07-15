@@ -1,6 +1,6 @@
 use fp::{FpPacked, PackedMagnitude};
 use rand::{Rand, Rng};
-use core::ops::{Add, Mul, Neg};
+use core::ops::{Add, Mul, Neg, Sub};
 use typenum::{
     self, operator_aliases::{Sum},
 };
@@ -29,7 +29,7 @@ where
 {
     type Output = Fp2<Sum<M, N>>;
 
-    #[inline]
+    #[inline(always)]
     fn add(self, rhs: Fp2<N>) -> Self::Output {
         Fp2 {
             c0: self.c0 + rhs.c0,
@@ -45,7 +45,7 @@ where
 {
     type Output = Fp2<Sum<M, typenum::U1>>;
 
-    #[inline]
+    #[inline(always)]
     fn neg(self) -> Self::Output {
         Fp2 {
             c0: -self.c0,
@@ -54,26 +54,51 @@ where
     }
 }
 
+impl<M: PackedMagnitude, N: PackedMagnitude> Sub<Fp2<N>> for Fp2<M>
+where
+    N: Add<typenum::U1>,
+    Sum<N, typenum::U1>: PackedMagnitude,
+    M: Add<Sum<N, typenum::U1>>,
+    Sum<M, Sum<N, typenum::U1>>: PackedMagnitude,
+{
+    type Output = Fp2<Sum<M, Sum<N, typenum::U1>>>;
+
+    #[inline(always)]
+    fn sub(self, rhs: Fp2<N>) -> Self::Output {
+        self + (-rhs)
+    }
+}
+
 impl<M: PackedMagnitude> Fp2<M> {
-    #[inline]
+    #[inline(always)]
     pub fn reduce(self) -> Fp2<typenum::U2> {
         Fp2 {
             c0: self.c0.reduce(),
             c1: self.c1.reduce()
         }
     }
+
+    #[inline(always)]
+    pub fn extend<N: PackedMagnitude + Sub<M>>(self) -> Fp2<N> {
+        Fp2 {
+            c0: self.c0.extend(),
+            c1: self.c1.extend()
+        }
+    }
 }
 
 impl Fp2<typenum::U2> {
+    #[inline(always)]
     pub fn full_reduce(self) -> Fp2<typenum::U1> {
         Fp2 {
-            c0: self.c0.subtract_modulus(),
-            c1: self.c1.subtract_modulus()
+            c0: self.c0.full_reduce(),
+            c1: self.c1.full_reduce()
         }
     }
 }
 
 impl Fp2<typenum::U1> {
+    #[inline(always)]
     pub fn is_equal(&self, other: &Self) -> Choice {
         self.c0.is_equal(&other.c0) &
         self.c1.is_equal(&other.c1)
@@ -81,6 +106,7 @@ impl Fp2<typenum::U1> {
 }
 
 impl PartialEq for Fp2<typenum::U1> {
+    #[inline(always)]
     fn eq(&self, other: &Fp2<typenum::U1>) -> bool {
         self.is_equal(other).unwrap_u8() == 1
     }
@@ -89,7 +115,7 @@ impl PartialEq for Fp2<typenum::U1> {
 impl Eq for Fp2<typenum::U1> { }
 
 impl Fp2<typenum::U2> {
-    #[inline]
+    #[inline(always)]
     pub fn square(self) -> Fp2<typenum::U2> {
         // Devegili OhEig Scott Dahab
         // Multiplication and Squaring on Pairing-Friendly Fields.pdf
@@ -110,7 +136,7 @@ impl Fp2<typenum::U2> {
 impl Mul for Fp2<typenum::U2> {
     type Output = Fp2<typenum::U2>;
 
-    #[inline]
+    #[inline(always)]
     fn mul(self, other: Fp2<typenum::U2>) -> Self::Output {
         // Devegili OhEig Scott Dahab
         // Multiplication and Squaring on Pairing-Friendly Fields.pdf

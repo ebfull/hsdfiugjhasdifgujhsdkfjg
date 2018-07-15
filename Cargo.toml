@@ -4,10 +4,6 @@ version = "0.0.0"
 authors = ["Sean Bowe <ewillbefull@gmail.com>"]
 license = "MIT/Apache-2.0"
 
-[[bench]]
-name = "lol"
-harness = false
-
 [dependencies]
 rand = "*"
 
@@ -18,10 +14,6 @@ features = ["nightly"]
 [dev-dependencies.pairing]
 version = "0.14"
 features = ["u128-support"]
-
-[dev-dependencies.criterion]
-version = "0.2"
-features = ["real_blackbox"]
 
 [dependencies.typenum]
 version = "*"

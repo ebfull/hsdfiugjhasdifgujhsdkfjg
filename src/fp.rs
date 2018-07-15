@@ -94,7 +94,7 @@ pub struct FpPacked<M: PackedMagnitude>(u64, u64, u64, u64, u64, u64, PhantomDat
 pub struct FpUnpacked<M: UnpackedMagnitude, F: Form>(u64x8, PhantomData<(M, F)>);
 
 impl<M: PackedMagnitude> ConditionallySelectable for FpPacked<M> {
-    #[inline]
+    #[inline(always)]
     fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
         FpPacked(
             u64::conditional_select(&a.0, &b.0, choice),
@@ -271,7 +271,7 @@ where
 {
     type Output = FpPacked<Sum<M, N>>;
 
-    #[inline]
+    #[inline(always)]
     fn add(self, rhs: FpPacked<N>) -> Self::Output {
         let mut carry = 0;
         let r0 = adc(self.0, rhs.0, &mut carry);
@@ -297,7 +297,7 @@ where
 {
     type Output = FpUnpacked<Sum<M, N>, Abnormal>;
 
-    #[inline]
+    #[inline(always)]
     fn add(self, rhs: FpUnpacked<N, F2>) -> Self::Output {
         FpUnpacked(self.0 + rhs.0, PhantomData)
     }
@@ -313,7 +313,7 @@ where
 {
     type Output = FpPacked<Sum<M, typenum::U1>>;
 
-    #[inline]
+    #[inline(always)]
     fn neg(self) -> Self::Output {
         let mut borrow = 0;
         let r0 = sbb(M::P0, self.0, &mut borrow);
@@ -408,6 +408,7 @@ where
 pub struct Num<T>(PhantomData<T>);
 
 impl<T> Num<T> {
+    #[inline(always)]
     pub fn new() -> Self {
         Num(PhantomData)
     }
@@ -429,7 +430,7 @@ where
 impl<M: UnpackedMagnitude, F: Form> FpUnpacked<M, F> {
     /// This performs a reduction of an element of any magnitude into an element
     /// of magnitude 2.
-    #[inline]
+    #[inline(always)]
     pub fn reduce(self) -> FpUnpacked<typenum::U2, Propagated> {
         let r0 = self.0.extract(0);
         let r1 = self.0.extract(1);
@@ -480,8 +481,8 @@ impl<M: PackedMagnitude> FpPacked<M> {
     /// This subtracts the modulus p unless the result is negative, producing
     /// a value of one less magnitude. It's impossible (and unnecessary)
     /// to do this to a value of magnitude 1.
-    #[inline]
-    pub fn subtract_modulus(self) -> FpPacked<Diff<M, typenum::U1>>
+    #[inline(always)]
+    pub fn full_reduce(self) -> FpPacked<Diff<M, typenum::U1>>
     where
         M: Sub<typenum::U1>,
         Diff<M, typenum::U1>: PackedMagnitude,
@@ -503,7 +504,7 @@ impl<M: PackedMagnitude> FpPacked<M> {
         r
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn reduce(self) -> FpPacked<typenum::U2> {
         if M::U64 <= 2 {
             // We're already reduced
@@ -547,7 +548,7 @@ where
 {
     type Output = FpPacked<typenum::U2>;
 
-    #[inline]
+    #[inline(always)]
     fn mul(self, other: FpPacked<N>) -> Self::Output {
         let mut carry = 0;
         let r0 = mac_with_carry(0, self.0, other.0, &mut carry);
@@ -607,7 +608,7 @@ where
 impl<M: PackedMagnitude> FpPacked<M> {
     /// Squaring is defined for `FpPacked` under the same conditions as
     /// self-multiplication.
-    #[inline]
+    #[inline(always)]
     pub fn square(self) -> FpPacked<typenum::U2>
     where
         M: Mul<M>,
@@ -988,7 +989,7 @@ fn test_mont_reduce_magnitude() {
 
     for _ in 0..100000 {
         let a = -(-(-(FpPacked::rand(rng))));
-        let b = FpPacked::rand(rng).subtract_modulus();
+        let b = FpPacked::rand(rng).full_reduce();
 
         assert!(b.5 >> 61 == 0);
 
@@ -1023,17 +1024,17 @@ fn test_associativity() {
         let b = FpPacked::rand(rng);
         let c = FpPacked::rand(rng) + FpPacked::rand(rng);
 
-        let x1 = ((a * b) * c).subtract_modulus();
-        let x2 = (a * (b * c)).subtract_modulus();
+        let x1 = ((a * b) * c).full_reduce();
+        let x2 = (a * (b * c)).full_reduce();
 
         assert!(x1.is_equal(&x2).unwrap_u8() == 1);
 
-        let a = a.reduce().subtract_modulus();
-        let b = b.reduce().subtract_modulus();
-        let c = c.reduce().subtract_modulus();
+        let a = a.reduce().full_reduce();
+        let b = b.reduce().full_reduce();
+        let c = c.reduce().full_reduce();
 
-        let y1 = ((a * b) * c).subtract_modulus();
-        let y2 = (a * (b * c)).subtract_modulus();
+        let y1 = ((a * b) * c).full_reduce();
+        let y2 = (a * (b * c)).full_reduce();
 
         assert!(y1.is_equal(&y2).unwrap_u8() == 1);
         assert!(x1.is_equal(&y1).unwrap_u8() == 1);
@@ -1070,8 +1071,8 @@ fn test_reductions() {
         let xy_prime = x + y;
         let xy_prime = xy_prime.reduce().pack();
 
-        let xy = xy.reduce().subtract_modulus();
-        let xy_prime = xy_prime.reduce().subtract_modulus();
+        let xy = xy.reduce().full_reduce();
+        let xy_prime = xy_prime.reduce().full_reduce();
 
         assert!(xy.is_equal(&xy_prime).unwrap_u8() == 1);
     }

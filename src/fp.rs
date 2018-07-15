@@ -245,6 +245,14 @@ impl FpPacked<typenum::U1> {
     }
 }
 
+impl PartialEq for FpPacked<typenum::U1> {
+    fn eq(&self, other: &FpPacked<typenum::U1>) -> bool {
+        self.is_equal(other).unwrap_u8() == 1
+    }
+}
+
+impl Eq for FpPacked<typenum::U1> { }
+
 impl<M: UnpackedMagnitude, F: Form> FpUnpacked<M, F> {
     pub fn extend<N: UnpackedMagnitude>(self) -> FpUnpacked<N, F>
     where
@@ -497,30 +505,35 @@ impl<M: PackedMagnitude> FpPacked<M> {
 
     #[inline]
     pub fn reduce(self) -> FpPacked<typenum::U2> {
-        // Compute how many times we should subtract modulus
-        let x = (self.5 & 0xe000000000000000) / SIX_MODULUS_5;
+        if M::U64 <= 2 {
+            // We're already reduced
+            FpPacked(self.0, self.1, self.2, self.3, self.4, self.5, PhantomData)
+        } else {
+            // Compute how many times we should subtract modulus
+            let x = (self.5 & 0xe000000000000000) / SIX_MODULUS_5;
 
-        #[inline(always)]
-        fn substep(s: u64, m: u64, x: u64, b: &mut u64) -> u64 {
-            let tmp = (u128::from(s) | (u128::from(u64::max_value()) << 64))
-                - (u128::from(m) * u128::from(x) + u128::from(*b));
+            #[inline(always)]
+            fn substep(s: u64, m: u64, x: u64, b: &mut u64) -> u64 {
+                let tmp = (u128::from(s) | (u128::from(u64::max_value()) << 64))
+                    - (u128::from(m) * u128::from(x) + u128::from(*b));
 
-            *b = !((tmp >> 64) as u64);
+                *b = !((tmp >> 64) as u64);
 
-            tmp as u64
+                tmp as u64
+            }
+
+            let mut borrow = 0;
+            let r0 = substep(self.0, SIX_MODULUS_0, x, &mut borrow);
+            let r1 = substep(self.1, SIX_MODULUS_1, x, &mut borrow);
+            let r2 = substep(self.2, SIX_MODULUS_2, x, &mut borrow);
+            let r3 = substep(self.3, SIX_MODULUS_3, x, &mut borrow);
+            let r4 = substep(self.4, SIX_MODULUS_4, x, &mut borrow);
+            let r5 = substep(self.5, SIX_MODULUS_5, x, &mut borrow);
+
+            debug_assert!(borrow == 0);
+
+            FpPacked(r0, r1, r2, r3, r4, r5, PhantomData)
         }
-
-        let mut borrow = 0;
-        let r0 = substep(self.0, SIX_MODULUS_0, x, &mut borrow);
-        let r1 = substep(self.1, SIX_MODULUS_1, x, &mut borrow);
-        let r2 = substep(self.2, SIX_MODULUS_2, x, &mut borrow);
-        let r3 = substep(self.3, SIX_MODULUS_3, x, &mut borrow);
-        let r4 = substep(self.4, SIX_MODULUS_4, x, &mut borrow);
-        let r5 = substep(self.5, SIX_MODULUS_5, x, &mut borrow);
-
-        debug_assert!(borrow == 0);
-
-        FpPacked(r0, r1, r2, r3, r4, r5, PhantomData)
     }
 }
 

@@ -19,3 +19,4 @@ extern crate subtle;
 extern crate typenum;
 
 pub mod fp;
+pub mod fp2;

@@ -4,17 +4,20 @@ version = "0.0.0"
 authors = ["Sean Bowe <ewillbefull@gmail.com>"]
 license = "MIT/Apache-2.0"
 
-[dependencies]
-rand = "*"
-
 [dependencies.subtle]
 version = "0.7"
-features = ["nightly"]
 
-[dev-dependencies.pairing]
-version = "0.14"
-features = ["u128-support"]
+# [dev-dependencies.pairing]
+# version = "0.14"
+# features = ["u128-support"]
 
 [dependencies.typenum]
 version = "*"
 features = ["no_std"]
+
+[dependencies.rand]
+version = "0.5.0"
+default-features = false
+
+[features]
+nightly = ["subtle/nightly"]

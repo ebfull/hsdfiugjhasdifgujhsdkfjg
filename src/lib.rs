@@ -16,4 +16,10 @@
 #[cfg(test)]
 extern crate core;
 
+extern crate subtle;
+extern crate typenum;
+extern crate rand;
+
+
+
 pub mod fp;

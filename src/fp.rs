@@ -326,15 +326,15 @@ impl Fp {
     }
 
     #[inline]
-    pub fn subtract_modulus(&mut self)
+    pub fn subtract_modulus<M: Magnitude>(&mut self)
     {
         let mut borrow = 0;
-        let r0 = sbb(self.c0, SIX_MODULUS_0, &mut borrow);
-        let r1 = sbb(self.c1, SIX_MODULUS_1, &mut borrow);
-        let r2 = sbb(self.c2, SIX_MODULUS_2, &mut borrow);
-        let r3 = sbb(self.c3, SIX_MODULUS_3, &mut borrow);
-        let r4 = sbb(self.c4, SIX_MODULUS_4, &mut borrow);
-        let r5 = sbb(self.c5, SIX_MODULUS_5, &mut borrow);
+        let r0 = sbb(self.c0, M::P[0], &mut borrow);
+        let r1 = sbb(self.c1, M::P[1], &mut borrow);
+        let r2 = sbb(self.c2, M::P[2], &mut borrow);
+        let r3 = sbb(self.c3, M::P[3], &mut borrow);
+        let r4 = sbb(self.c4, M::P[4], &mut borrow);
+        let r5 = sbb(self.c5, M::P[5], &mut borrow);
 
         let borrow = !Choice::from(borrow as u8);
 
@@ -346,7 +346,13 @@ impl Fp {
         self.c5.conditional_assign(&r5, borrow);
 
         debug!({
-            self.magnitude -= 1;
+            // Our element is magnitude N > M, and we subtract
+            // q*M. If the subtraction succeeds, the resulting
+            // magnitude is N - M. If it fails, the element
+            // must be magnitude M. Thus, our new magnitude is
+            // max(N - M, M).
+            assert!(self.magnitude > M::U64);
+            self.magnitude = ::core::cmp::max(self.magnitude - M::U64, M::U64);
             self.check();
         });
     }

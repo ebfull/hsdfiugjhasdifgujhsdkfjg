@@ -23,3 +23,4 @@ extern crate rand;
 
 
 pub mod fp;
+pub mod fp2;

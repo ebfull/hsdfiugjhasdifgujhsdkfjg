@@ -23,7 +23,7 @@ pub struct Fp {
     // implementation correctly handles magnitudes without type-system
     // abuse which will likely lead to escape hatches, performance problems
     // and general ugliness due to deficiencies in the Rust language.
-    magnitude: u64,
+    pub magnitude: u64,
 }
 
 #[cfg(not(debug_assertions))]
@@ -197,8 +197,7 @@ impl core::ops::ShlAssign<usize> for Fp {
         self.c0 = self.c0 << rhs;
 
         debug!({
-            // Doesn't make sense to quadruple.
-            assert!(rhs < 3);
+            assert!(rhs < 4);
             assert!(rhs > 0);
             for _ in 0..rhs {
                 self.magnitude += self.magnitude;
@@ -298,6 +297,7 @@ impl Fp {
 
     /// Reduce an element of Fp to the magnitude `2`. This
     /// works for any element of magnitude less than `10`.
+    #[inline]
     pub fn reduce_assign(&mut self) {
         // Regardless of the magnitude of the element, it
         // happens that the carry values (the three most
@@ -346,6 +346,7 @@ impl Fp {
     /// which might not take effect if underflow occurs.
     /// However, this can be an alternative to more
     /// expensive general reductions.
+    #[inline]
     pub fn sub_assign_modulus<M: Magnitude>(&mut self)
     {
         let mut borrow = 0;
@@ -373,6 +374,23 @@ impl Fp {
             // max(N - M, M).
             assert!(self.magnitude > M::U64);
             self.magnitude = ::core::cmp::max(self.magnitude - M::U64, M::U64);
+            self.check();
+        });
+    }
+
+    pub fn negate_assign<M: Magnitude>(&mut self) {
+        let mut borrow = 0;
+        self.c0 = sbb(M::P[0], self.c0, &mut borrow);
+        self.c1 = sbb(M::P[1], self.c1, &mut borrow);
+        self.c2 = sbb(M::P[2], self.c2, &mut borrow);
+        self.c3 = sbb(M::P[3], self.c3, &mut borrow);
+        self.c4 = sbb(M::P[4], self.c4, &mut borrow);
+        self.c5 = sbb(M::P[5], self.c5, &mut borrow);
+
+        debug!({
+            assert!(borrow == 0);
+            assert_eq!(M::U64, self.magnitude);
+            self.magnitude += 1;
             self.check();
         });
     }
@@ -542,7 +560,7 @@ fn adc(a: u64, b: u64, carry: &mut u64) -> u64 {
 fn sbb(a: u64, b: u64, borrow: &mut u64) -> u64 {
     let tmp = (1u128 << 64) + u128::from(a) - u128::from(b) - u128::from(*borrow);
 
-    *borrow = if tmp >> 64 == 0 { 1 } else { 0 };
+    *borrow = (!((tmp >> 64) as u64)) & 1;
 
     tmp as u64
 }
@@ -838,3 +856,80 @@ fn test_squaring_consistency() {
         assert!(a == b);
     }
 }
+
+// #[test]
+// fn test_subtraction_consistency() {
+//     use rand::SeedableRng;
+//     let rng = &mut rand::prng::XorShiftRng::from_seed([0; 16]);
+
+//     for _ in 0..100_000 {
+//         // Create a value of magnitude 2
+//         let mut a = Fp::rand(rng);
+//         let mut b = Fp::rand(rng);
+//         let mut c = a;
+
+//         a -= &b;
+//         b.negate_assign::<typenum::U2>();
+//         c += &b;
+//         c.reduce_assign();
+
+//         a.sub_assign_modulus::<typenum::U1>();
+//         a.sub_assign_modulus::<typenum::U1>();
+//         c.sub_assign_modulus::<typenum::U1>();
+
+//         assert!(a == c);
+//     }
+
+//     for _ in 0..100_000 {
+//         let a = Fp::rand(rng);
+//         let b = Fp::rand(rng);
+//         let c = Fp::rand(rng);
+
+//         let mut tmp1 = b;
+//         tmp1 -= &c;
+//         tmp1 *= &a;
+
+//         let mut tmp2 = b;
+//         tmp2 *= &a;
+
+//         let mut tmp3 = c;
+//         tmp3 *= &a;
+//         tmp3.negate_assign::<typenum::U2>();
+
+//         tmp2 += &tmp3;
+//         tmp2.reduce_assign();
+//         tmp2.sub_assign_modulus::<typenum::U1>();
+
+//         tmp1.sub_assign_modulus::<typenum::U1>();
+
+//         assert!(tmp1 == tmp2);
+//     }
+// }
+
+// #[test]
+// fn test_subtraction_identities() {
+//     use rand::SeedableRng;
+//     let rng = &mut rand::prng::XorShiftRng::from_seed([0; 16]);
+
+//     for _ in 0..100_000 {
+//         let mut a = Fp::rand(rng);
+//         a.sub_assign_modulus::<typenum::U1>();
+//         let mut b = a;
+//         b <<= 3;
+//         b += &a;
+
+//         #[cfg(debug_assertions)]
+//         {
+//             assert_eq!(b.magnitude, 9);
+//         }
+
+//         for _ in 0..9 {
+//             b -= &a;
+//         }
+
+//         // b.reduce_assign();
+//         // b.sub_assign_modulus::<typenum::U1>();
+
+//         // assert!(b == Fp::zero());
+//     }
+// }

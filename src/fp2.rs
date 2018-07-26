@@ -113,6 +113,9 @@ impl Fp2 {
             self.c1 += &tmp; // c1 = (8)
         }
         self.c0 += &v1; // c0 = (5)
+
+        self.c0.reduce_assign();
+        self.c1.reduce_assign();
     }
 }
 

@@ -4,8 +4,8 @@
 
 use typenum;
 use rand;
-use core;
-use subtle::{Choice, ConditionallyAssignable, ConstantTimeEq};
+use core::{self, cmp};
+use subtle::{Choice, ConditionallyAssignable, ConstantTimeEq, ConditionallySelectable};
 
 #[cfg(debug_assertions)]
 #[derive(Copy, Clone)]
@@ -138,6 +138,19 @@ mod debug_tools {
 impl PartialEq for Fp {
     fn eq(&self, other: &Fp) -> bool {
         self.ct_eq(other).unwrap_u8() == 1
+    }
+}
+
+impl ConditionallySelectable for Fp {
+    fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
+        new_fp!(cmp::max(a.magnitude, b.magnitude); [
+            ConditionallySelectable::conditional_select(&a.c0, &b.c0, choice),
+            ConditionallySelectable::conditional_select(&a.c1, &b.c1, choice),
+            ConditionallySelectable::conditional_select(&a.c2, &b.c2, choice),
+            ConditionallySelectable::conditional_select(&a.c3, &b.c3, choice),
+            ConditionallySelectable::conditional_select(&a.c4, &b.c4, choice),
+            ConditionallySelectable::conditional_select(&a.c5, &b.c5, choice)
+        ])
     }
 }
 
@@ -289,10 +302,38 @@ impl Fp {
         new_fp!(2; [c0, c1, c2, c3, c4, c5])
     }
 
+    pub fn is_zero(&self) -> Choice {
+        debug!({
+            assert_eq!(self.magnitude, 1);
+            self.check();
+        });
+
+        [
+            self.c0,
+            self.c1,
+            self.c2,
+            self.c3,
+            self.c4,
+            self.c5
+        ].ct_eq(&[0, 0, 0, 0, 0, 0])
+    }
+
     /// Create the "zero" element, the additive identity of the
     /// field.
     pub fn zero() -> Self {
         new_fp!(1; [0, 0, 0, 0, 0, 0])
+    }
+
+    /// Create the "one" element
+    pub fn one() -> Self {
+        new_fp!(1; [
+            0x760900000002fffd,
+            0xebf4000bc40c0002,
+            0x5f48985753c758ba,
+            0x77ce585370525745,
+            0x5c071a97a256ec6d,
+            0x15f65ec3fa80e493
+        ])
     }
 
     /// Reduce an element of Fp to the magnitude `2`. This
@@ -558,9 +599,9 @@ fn adc(a: u64, b: u64, carry: &mut u64) -> u64 {
 
 #[inline(always)]
 fn sbb(a: u64, b: u64, borrow: &mut u64) -> u64 {
-    let tmp = (1u128 << 64) + u128::from(a) - u128::from(b) - u128::from(*borrow);
+    let tmp = ((u64::max_value() as u128) << 64) + u128::from(a) - u128::from(b) - u128::from(*borrow);
 
-    *borrow = (!((tmp >> 64) as u64)) & 1;
+    *borrow = !((tmp >> 64) as u64);
 
     tmp as u64
 }
@@ -856,80 +897,3 @@ fn test_squaring_consistency() {
         assert!(a == b);
     }
 }
-
-// #[test]
-// fn test_subtraction_consistency() {
-//     use rand::SeedableRng;
-//     let rng = &mut rand::prng::XorShiftRng::from_seed([0; 16]);
-
-//     for _ in 0..100_000 {
-//         // Create a value of magnitude 2
-//         let mut a = Fp::rand(rng);
-//         let mut b = Fp::rand(rng);
-//         let mut c = a;
-
-//         a -= &b;
-//         b.negate_assign::<typenum::U2>();
-//         c += &b;
-//         c.reduce_assign();
-
-//         a.sub_assign_modulus::<typenum::U1>();
-//         a.sub_assign_modulus::<typenum::U1>();
-//         c.sub_assign_modulus::<typenum::U1>();
-
-//         assert!(a == c);
-//     }
-
-//     for _ in 0..100_000 {
-//         let a = Fp::rand(rng);
-//         let b = Fp::rand(rng);
-//         let c = Fp::rand(rng);
-
-//         let mut tmp1 = b;
-//         tmp1 -= &c;
-//         tmp1 *= &a;
-
-//         let mut tmp2 = b;
-//         tmp2 *= &a;
-
-//         let mut tmp3 = c;
-//         tmp3 *= &a;
-//         tmp3.negate_assign::<typenum::U2>();
-
-//         tmp2 += &tmp3;
-//         tmp2.reduce_assign();
-//         tmp2.sub_assign_modulus::<typenum::U1>();
-
-//         tmp1.sub_assign_modulus::<typenum::U1>();
-
-//         assert!(tmp1 == tmp2);
-//     }
-// }
-
-// #[test]
-// fn test_subtraction_identities() {
-//     use rand::SeedableRng;
-//     let rng = &mut rand::prng::XorShiftRng::from_seed([0; 16]);
-
-//     for _ in 0..100_000 {
-//         let mut a = Fp::rand(rng);
-//         a.sub_assign_modulus::<typenum::U1>();
-//         let mut b = a;
-//         b <<= 3;
-//         b += &a;
-
-//         #[cfg(debug_assertions)]
-//         {
-//             assert_eq!(b.magnitude, 9);
-//         }
-
-//         for _ in 0..9 {
-//             b -= &a;
-//         }
-
-//         // b.reduce_assign();
-//         // b.sub_assign_modulus::<typenum::U1>();
-
-//         // assert!(b == Fp::zero());
-//     }
-// }

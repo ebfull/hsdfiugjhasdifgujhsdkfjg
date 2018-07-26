@@ -14,6 +14,46 @@ use rand::SeedableRng;
 extern crate hsdfiugjhasdifgujhsdkfjg;
 use hsdfiugjhasdifgujhsdkfjg::fp::Fp;
 use hsdfiugjhasdifgujhsdkfjg::fp2::Fp2;
+use hsdfiugjhasdifgujhsdkfjg::g2::*;
+
+use subtle::Choice;
+
+#[bench]
+fn g2_add_old(b: &mut Bencher) {
+    use pairing::bls12_381;
+    use pairing::CurveProjective;
+
+    let x = bls12_381::G1::one();
+    let y = bls12_381::G1::one();
+
+    b.iter(move || {
+        let mut x = x;
+        x.add_assign(&y);
+        x
+    });
+}
+
+#[bench]
+fn g2_add(b: &mut Bencher) {
+    let rng = &mut rand::prng::XorShiftRng::from_seed([0; 16]);
+
+    let mut x = G2Projective {
+        x: Fp2::rand(rng),
+        y: Fp2::rand(rng),
+        z: Fp2::rand(rng),
+        infinity: Choice::from(0u8)
+    };
+
+    let y = G2Affine {
+        x: Fp2::rand(rng),
+        y: Fp2::rand(rng)
+    };
+
+    b.iter(move || {
+        x.add_assign(&y);
+        x
+    });
+}
 
 #[bench]
 fn fp_reduce_assign(b: &mut Bencher) {

@@ -80,6 +80,34 @@ fn fp_sub_assign_modulus(b: &mut Bencher) {
 }
 
 #[bench]
+fn fp_mul_old(b: &mut Bencher) {
+    use pairing::bls12_381;
+    use ff::Field;
+
+    let x = bls12_381::Fq::one();
+    let y = bls12_381::Fq::one();
+
+    b.iter(move || {
+        let mut x = x;
+        x.mul_assign(&y);
+        x
+    });
+}
+
+#[bench]
+fn fp_mul(b: &mut Bencher) {
+    let rng = &mut rand::prng::XorShiftRng::from_seed([0; 16]);
+
+    let mut x = Fp::rand(rng);
+    let y = Fp::rand(rng);
+
+    b.iter(move || {
+        x *= &y;
+        x
+    });
+}
+
+#[bench]
 fn fp2_mul_old(b: &mut Bencher) {
     use pairing::bls12_381;
     use ff::Field;
